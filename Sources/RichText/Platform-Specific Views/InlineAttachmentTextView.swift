@@ -7,30 +7,33 @@
 
 import SwiftUI
 
-final class InlineAttachmentTextView: NSTextView {
+#if canImport(UIKit)
+import UIKit
+#endif
+
+final class InlineAttachmentTextView: PlatformTextView {
     
     var attributedContent: AttributedString = .init() {
         willSet { setAttributedString(newValue) }
     }
     
     private func setAttributedString(_ attributedString: AttributedString) {
-        guard let textStorage else { return }
+        guard let _textStorage else { return }
         
         do {
             let attributed = try NSMutableAttributedString(
                 attributedString: attributedString.nsAttributedString
             )
-            attributed.fixAttributes(in: NSRange(location: 0, length: attributed.length))
-            textStorage.setAttributedString(attributed)
+            _textStorage.setAttributedString(attributed)
             
             attributed.enumerateAttribute(
-                .inlineHostingAttachmentAttribute,
+                .inlineHostingAttachment,
                 in: NSRange(location: 0, length: attributed.length)
             ) { value, range, _ in
                 guard let attachment = value as? InlineHostingAttachment else { return }
                 attachment.state.onSizeChange = { [weak self] in
                     guard let self else { return }
-                   invalidateTextLayout(at: range)
+                    invalidateTextLayout(at: range)
                 }
             }
         } catch {
@@ -39,47 +42,92 @@ final class InlineAttachmentTextView: NSTextView {
     }
     
     private func invalidateTextLayout(at range: NSRange) {
-        guard let layoutManager else { return }
-        layoutManager.invalidateGlyphs(
-            forCharacterRange: range,
-            changeInLength: 0,
-            actualCharacterRange: nil
-        )
-        layoutManager.invalidateLayout(
-            forCharacterRange: range,
-            actualCharacterRange: nil
-        )
+        guard let _textLayoutManager,
+              let textContentManager = _textLayoutManager.textContentManager else {
+            return
+        }
+    
+        let textRange = NSTextRange(range, textContentManager: textContentManager)
+        guard let textRange else { return }
         
-        self.needsLayout = true
-        self.setNeedsDisplay(self.bounds)
+        _textLayoutManager.invalidateLayout(for: textRange)
+        _textLayoutManager.ensureLayout(for: textRange)
+        
+        _invalidateTextLayout()
     }
     
+    private func _invalidateTextLayout() {
+        #if canImport(AppKit)
+        needsLayout = true
+        setNeedsDisplay(bounds)
+        #elseif canImport(UIKit)
+        setNeedsLayout()
+        setNeedsDisplay()
+        #endif
+    }
+    
+    #if canImport(AppKit)
     override func layout() {
         super.layout()
         updateAttachmentOrigins()
     }
+    #elseif canImport(UIKit)
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateAttachmentOrigins()
+    }
+    #endif
     
     private func updateAttachmentOrigins() {
-        guard let layoutManager, let textContainer, let textStorage else { return }
-        layoutManager.ensureLayout(for: textContainer)
+        guard let _textLayoutManager, let _textStorage, let textContentManager else {
+            return
+        }
+        
+        _textLayoutManager.ensureLayout(
+            for: _textLayoutManager.documentRange
+        )
         
         enumerateInlineHostingAttchment(
-            in: textStorage
+            in: _textStorage
         ) { attachment, range in
-            let glyphRange = layoutManager.glyphRange(
-                forCharacterRange: range,
-                actualCharacterRange: nil
+            let textRange = NSTextRange(
+                range,
+                textContentManager: textContentManager
             )
-            let rect = layoutManager.boundingRect(
-                forGlyphRange: glyphRange,
-                in: textContainer
-            )
-            let origin = rect.origin
+            guard let textRange else { return }
             
+            var firstFrame: CGRect?
+            _textLayoutManager.enumerateTextSegments(
+                in: textRange,
+                type: .standard,
+                options: []
+            ) { _, segmentFrame, _, _ in
+                firstFrame = segmentFrame
+                return false
+            }
+            
+            guard let segmentFrame = firstFrame else { return }
+            let origin = CGPoint(
+                x: segmentFrame.origin.x + textContainerOffset.x,
+                y: segmentFrame.origin.y + textContainerOffset.y
+            )
             if attachment.state.origin != origin {
                 attachment.state.origin = origin
             }
         }
+    }
+    
+    private var textContainerOffset: CGPoint {
+        #if canImport(AppKit)
+        return textContainerOrigin
+        #elseif canImport(UIKit)
+        return CGPoint(
+            x: textContainerInset.left,
+            y: textContainerInset.top
+        )
+        #else
+        return .zero
+        #endif
     }
     
     private func enumerateInlineHostingAttchment(
@@ -91,5 +139,58 @@ final class InlineAttachmentTextView: NSTextView {
             guard let attachment = value as? InlineHostingAttachment else { return }
             handler(attachment, range)
         }
+    }
+}
+
+// MARK: - Auxiliary
+
+extension InlineAttachmentTextView {
+    /// An optional value of `NSTextLayoutManager` for cross-platform code statbility.
+    private var _textLayoutManager: NSTextLayoutManager? {
+        self.textLayoutManager
+    }
+    
+    /// An optional value of `NSTextLayoutManager` for cross-platform code statbility.
+    private var textContentManager: NSTextContentManager? {
+        _textLayoutManager?.textContentManager
+    }
+    
+    /// An optional value of `NSLayoutManager` for cross-platform code statbility.
+    ///
+    /// - warning: Calling this would switch to TextKit 1 and cause layout or behavior changes.
+    @available(*, deprecated, message: "Calling this would switch to TextKit 1.")
+    private var _layoutManager: NSLayoutManager? {
+        self.layoutManager
+    }
+    
+    /// An optional value of `NSTextContainer` for cross-platform code statbility.
+    ///
+    /// For UIKit, this is guaranteed to be non-`nil`. For AppKit, this could be `nil`.
+    private var _textContainer: NSTextContainer? {
+        self.textContainer
+    }
+    
+    /// An optional value of `NSTextStorage` for cross-platform code statbility.
+    ///
+    /// For UIKit, this is guaranteed to be non-`nil`. For AppKit, this could be `nil`.
+    private var _textStorage: NSTextStorage? {
+        self.textStorage
+    }
+}
+
+fileprivate extension NSTextRange {
+    convenience init?(_ nsRange: NSRange, textContentManager: NSTextContentManager) {
+        let documentStart = textContentManager.documentRange.location
+        let startLocation = textContentManager.location(
+            documentStart,
+            offsetBy: nsRange.location
+        )
+        guard let startLocation else { return nil }
+        
+        let endLocation = textContentManager.location(
+            documentStart,
+            offsetBy: nsRange.location + nsRange.length
+        )
+        self.init(location: startLocation, end: endLocation)
     }
 }

@@ -15,7 +15,7 @@ extension AttributeScopes.RichTextAttributes {
 }
 
 extension NSAttributedString.Key {
-    static let inlineHostingAttachmentAttribute = NSAttributedString.Key(
+    static let inlineHostingAttachment = NSAttributedString.Key(
         AttributeScopes.RichTextAttributes.InlineHostingAttachmentAttribute.name
     )
 }

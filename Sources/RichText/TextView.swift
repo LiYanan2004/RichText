@@ -38,6 +38,8 @@ public struct TextView: View {
     private var _textView: some View {
         #if canImport(AppKit)
         _TextView_AppKit(attributedString: content.attributedString)
+        #elseif canImport(UIKit)
+        _TextView_UIKit(attributedString: content.attributedString)
         #else
         EmptyView()
         #endif
@@ -68,8 +70,10 @@ extension AttributedString {
                     including: \.richText
                 )
                 let range = NSRange(location: 0, length: converted.length)
+                #if canImport(AppKit)
                 converted.fixFontAttribute(in: range)
-
+                #endif
+                
                 if let attachment = run.inlineHostingAttachment {
                     converted.addAttribute(
                         .attachment,
