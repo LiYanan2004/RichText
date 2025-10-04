@@ -23,11 +23,12 @@ final class InlineAttachmentTextView: PlatformTextView {
             let attributed = try NSMutableAttributedString(
                 attributedString: attributedString.nsAttributedString
             )
-            _textStorage.setAttributedString(attributed)
+            let range = NSRange(location: 0, length: attributed.length)
             
+            attributed._fixForgroundColorIfNecessary(in: range)
             attributed.enumerateAttribute(
                 .inlineHostingAttachment,
-                in: NSRange(location: 0, length: attributed.length)
+                in: range
             ) { value, range, _ in
                 guard let attachment = value as? InlineHostingAttachment else { return }
                 attachment.state.onSizeChange = { [weak self] in
@@ -35,47 +36,12 @@ final class InlineAttachmentTextView: PlatformTextView {
                     invalidateTextLayout(at: range)
                 }
             }
+            
+            _textStorage.setAttributedString(attributed)
         } catch {
             print("Failed to build attributed string: \(error)")
         }
     }
-    
-    private func invalidateTextLayout(at range: NSRange) {
-        guard let textLayoutManager,
-              let textContentManager = textLayoutManager.textContentManager else {
-            return
-        }
-    
-        let textRange = NSTextRange(range, textContentManager: textContentManager)
-        guard let textRange else { return }
-        
-        textLayoutManager.invalidateLayout(for: textRange)
-        textLayoutManager.ensureLayout(for: textRange)
-        
-        _invalidateTextLayout()
-    }
-    
-    private func _invalidateTextLayout() {
-        #if canImport(AppKit)
-        needsLayout = true
-        setNeedsDisplay(bounds)
-        #elseif canImport(UIKit)
-        setNeedsLayout()
-        setNeedsDisplay()
-        #endif
-    }
-    
-    #if canImport(AppKit)
-    override func layout() {
-        super.layout()
-        updateAttachmentOrigins()
-    }
-    #elseif canImport(UIKit)
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateAttachmentOrigins()
-    }
-    #endif
     
     private func updateAttachmentOrigins() {
         guard let textLayoutManager, let _textStorage, let textContentManager else {
@@ -116,6 +82,17 @@ final class InlineAttachmentTextView: PlatformTextView {
         }
     }
     
+    private func enumerateInlineHostingAttchment(
+        in textStorage: NSTextStorage,
+        handler: (InlineHostingAttachment, NSRange) -> Void
+    ) {
+        let range = NSRange(location: 0, length: textStorage.length)
+        textStorage.enumerateAttribute(.attachment, in: range) { value, range, _ in
+            guard let attachment = value as? InlineHostingAttachment else { return }
+            handler(attachment, range)
+        }
+    }
+    
     private var textContainerOffset: CGPoint {
         #if canImport(AppKit)
         return textContainerOrigin
@@ -128,17 +105,47 @@ final class InlineAttachmentTextView: PlatformTextView {
         return .zero
         #endif
     }
-    
-    private func enumerateInlineHostingAttchment(
-        in textStorage: NSTextStorage,
-        handler: (InlineHostingAttachment, NSRange) -> Void
-    ) {
-        let range = NSRange(location: 0, length: textStorage.length)
-        textStorage.enumerateAttribute(.attachment, in: range) { value, range, _ in
-            guard let attachment = value as? InlineHostingAttachment else { return }
-            handler(attachment, range)
+}
+
+// MARK: - Layout
+
+extension InlineAttachmentTextView {
+    private func invalidateTextLayout(at range: NSRange) {
+        guard let textLayoutManager,
+              let textContentManager = textLayoutManager.textContentManager else {
+            return
         }
+    
+        let textRange = NSTextRange(range, textContentManager: textContentManager)
+        guard let textRange else { return }
+        
+        textLayoutManager.invalidateLayout(for: textRange)
+        textLayoutManager.ensureLayout(for: textRange)
+        
+        _invalidateTextLayout()
     }
+    
+    private func _invalidateTextLayout() {
+        #if canImport(AppKit)
+        needsLayout = true
+        setNeedsDisplay(bounds)
+        #elseif canImport(UIKit)
+        setNeedsLayout()
+        setNeedsDisplay()
+        #endif
+    }
+    
+    #if canImport(AppKit)
+    override func layout() {
+        super.layout()
+        updateAttachmentOrigins()
+    }
+    #elseif canImport(UIKit)
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateAttachmentOrigins()
+    }
+    #endif
 }
 
 // MARK: - Auxiliary
@@ -164,6 +171,21 @@ extension InlineAttachmentTextView {
     /// For UIKit, this is guaranteed to be non-`nil`. For AppKit, this could be `nil`.
     private var _textStorage: NSTextStorage? {
         self.textStorage
+    }
+}
+
+fileprivate extension NSMutableAttributedString {
+    func _fixForgroundColorIfNecessary(in range: NSRange) {
+        #if canImport(UIKit)
+        enumerateAttributes(
+            in: range,
+            options: []
+        ) { attrs, range, _ in
+            if attrs[.foregroundColor] == nil {
+                addAttribute(.foregroundColor, value: UIColor.label, range: range)
+            }
+        }
+        #endif
     }
 }
 

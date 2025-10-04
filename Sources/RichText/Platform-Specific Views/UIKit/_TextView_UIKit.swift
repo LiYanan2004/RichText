@@ -17,7 +17,6 @@ struct _TextView_UIKit: UIViewRepresentable {
         let textView = InlineAttachmentTextView(frame: .zero)
         textView.backgroundColor = .clear
         textView.delegate = context.coordinator
-        textView.textColor = .label
         
         textView.isEditable = false
         textView.isSelectable = true
