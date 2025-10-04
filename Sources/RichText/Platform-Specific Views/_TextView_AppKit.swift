@@ -21,6 +21,11 @@ struct _TextView_AppKit: NSViewRepresentable {
         // Behavior
         textView.isEditable = false
         textView.usesAdaptiveColorMappingForDarkAppearance = true
+        if #available(macOS 26.0, *) {
+            textView.font = Font.default
+                .resolve(in: context.environment.fontResolutionContext)
+                .ctFont as NSFont
+        }
         
         // Sizing
         textView.autoresizingMask = [.width]

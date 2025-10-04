@@ -35,6 +35,7 @@ final class InlineAttachmentTextView: PlatformTextView {
             let range = NSRange(location: 0, length: attributed.length)
             
             attributed._fixForgroundColorIfNecessary(in: range)
+            attributed._fixFont(self.font, in: range)
             attributed.enumerateAttribute(
                 .inlineHostingAttachment,
                 in: range
@@ -178,5 +179,24 @@ fileprivate extension NSMutableAttributedString {
             }
         }
         #endif
+    }
+    
+    #if canImport(AppKit)
+    typealias FontType = NSFont
+    #else
+    typealias FontType = UIFont
+    #endif
+    
+    func _fixFont(_ font: FontType?, in range: NSRange) {
+        guard let font else { return }
+        
+        enumerateAttributes(
+            in: range,
+            options: []
+        ) { attrs, range, _ in
+            if attrs[.font] == nil {
+                addAttribute(.font, value: font, range: range)
+            }
+        }
     }
 }

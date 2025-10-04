@@ -22,6 +22,12 @@ struct _TextView_UIKit: UIViewRepresentable {
         textView.isSelectable = true
         textView.isScrollEnabled = false
         
+        if #available(iOS 26.0, *) {
+            textView.font = Font.default
+                .resolve(in: context.environment.fontResolutionContext)
+                .ctFont as UIFont
+        }
+        
         return textView
     }
     

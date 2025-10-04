@@ -72,9 +72,6 @@ extension AttributedString {
                     including: \.richText
                 )
                 let range = NSRange(location: 0, length: converted.length)
-                #if canImport(AppKit)
-                converted.fixFontAttribute(in: range)
-                #endif
                 
                 if let attachment = run.inlineHostingAttachment {
                     converted.addAttribute(
