@@ -7,14 +7,13 @@
 
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-#endif
-
 final class InlineAttachmentTextView: PlatformTextView {
-    
     var attributedContent: AttributedString = .init() {
         willSet { setAttributedString(newValue) }
+    }
+    
+    private var textContentManager: NSTextContentManager? {
+        textLayoutManager?.textContentManager
     }
     
     private func setAttributedString(_ attributedString: AttributedString) {
@@ -42,16 +41,16 @@ final class InlineAttachmentTextView: PlatformTextView {
     }
     
     private func invalidateTextLayout(at range: NSRange) {
-        guard let _textLayoutManager,
-              let textContentManager = _textLayoutManager.textContentManager else {
+        guard let textLayoutManager,
+              let textContentManager = textLayoutManager.textContentManager else {
             return
         }
     
         let textRange = NSTextRange(range, textContentManager: textContentManager)
         guard let textRange else { return }
         
-        _textLayoutManager.invalidateLayout(for: textRange)
-        _textLayoutManager.ensureLayout(for: textRange)
+        textLayoutManager.invalidateLayout(for: textRange)
+        textLayoutManager.ensureLayout(for: textRange)
         
         _invalidateTextLayout()
     }
@@ -79,12 +78,12 @@ final class InlineAttachmentTextView: PlatformTextView {
     #endif
     
     private func updateAttachmentOrigins() {
-        guard let _textLayoutManager, let _textStorage, let textContentManager else {
+        guard let textLayoutManager, let _textStorage, let textContentManager else {
             return
         }
         
-        _textLayoutManager.ensureLayout(
-            for: _textLayoutManager.documentRange
+        textLayoutManager.ensureLayout(
+            for: textLayoutManager.documentRange
         )
         
         enumerateInlineHostingAttchment(
@@ -97,7 +96,7 @@ final class InlineAttachmentTextView: PlatformTextView {
             guard let textRange else { return }
             
             var firstFrame: CGRect?
-            _textLayoutManager.enumerateTextSegments(
+            textLayoutManager.enumerateTextSegments(
                 in: textRange,
                 type: .standard,
                 options: []
@@ -145,16 +144,6 @@ final class InlineAttachmentTextView: PlatformTextView {
 // MARK: - Auxiliary
 
 extension InlineAttachmentTextView {
-    /// An optional value of `NSTextLayoutManager` for cross-platform code statbility.
-    private var _textLayoutManager: NSTextLayoutManager? {
-        self.textLayoutManager
-    }
-    
-    /// An optional value of `NSTextLayoutManager` for cross-platform code statbility.
-    private var textContentManager: NSTextContentManager? {
-        _textLayoutManager?.textContentManager
-    }
-    
     /// An optional value of `NSLayoutManager` for cross-platform code statbility.
     ///
     /// - warning: Calling this would switch to TextKit 1 and cause layout or behavior changes.

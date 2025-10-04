@@ -5,10 +5,8 @@
 //  Created by Yanan Li on 2025/10/4.
 //
 
-import SwiftUI
-
 #if canImport(UIKit)
-import UIKit
+import SwiftUI
 
 struct _TextView_UIKit: UIViewRepresentable {
     var attributedString: AttributedString

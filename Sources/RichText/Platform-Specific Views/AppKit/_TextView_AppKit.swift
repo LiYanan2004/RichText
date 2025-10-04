@@ -5,9 +5,9 @@
 //  Created by Yanan Li on 2025/8/24.
 //
 
+#if canImport(AppKit)
 import SwiftUI
 
-#if canImport(AppKit)
 struct _TextView_AppKit: NSViewRepresentable {
     var attributedString: AttributedString
     
