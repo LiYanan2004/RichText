@@ -21,8 +21,7 @@ public struct TextViewContent: Hashable {
             case .attributedString(let attributedString):
                 return attributedString
             case .attachment(let attachment):
-                var container = AttributeContainer()
-                container[RichTextFrameworkScope.InlineHostingAttachmentAttribute.self] = attachment
+                let container = AttributeContainer().inlineHostingAttachment(attachment)
                 return AttributedString("\u{FFFC}", attributes: container)
             }
         }

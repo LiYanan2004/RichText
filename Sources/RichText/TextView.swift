@@ -65,12 +65,12 @@ extension AttributedString {
             for run in runs {
                 let converted = try NSMutableAttributedString(
                     AttributedString(self[run.range]),
-                    including: RichTextFrameworkScope.self
+                    including: \.richText
                 )
                 let range = NSRange(location: 0, length: converted.length)
                 converted.fixFontAttribute(in: range)
 
-                if let attachment = run.inlineHostingAttachmentAttribute {
+                if let attachment = run.inlineHostingAttachment {
                     converted.addAttribute(
                         .attachment,
                         value: attachment,

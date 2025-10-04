@@ -17,8 +17,10 @@ extension AttributeScopes {
         
         let foundation: AttributeScopes.FoundationAttributes
         
-        let inlineHostingAttachmentAttribute: AttributeScopes.RichTextAttributes.InlineHostingAttachmentAttribute
+        let inlineHostingAttachment: AttributeScopes.RichTextAttributes.InlineHostingAttachmentAttribute
     }
+    
+    var richText: RichTextAttributes.Type { RichTextAttributes.self }
 }
 
 extension AttributeDynamicLookup {

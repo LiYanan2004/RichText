@@ -11,15 +11,9 @@ import SwiftUI
 struct _TextView_AppKit: NSViewRepresentable {
     var attributedString: AttributedString
     
-    @Environment(\.font) var font
-//    @Environment(\.fontResolutionContext) private var fontResolutionContext
-    
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     func makeNSView(context: Context) -> InlineAttachmentTextView {
-//        let scrollView = NSScrollView(frame: .zero)
-//        scrollView.drawsBackground = false
-//        
         let textView = InlineAttachmentTextView(frame: .zero)
         textView.drawsBackground = false
         textView.delegate = context.coordinator.self
