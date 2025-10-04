@@ -5,8 +5,8 @@ import PackageDescription
 let package = Package(
     name: "RichText",
     platforms: [
-        .macOS(.v15),
-        .iOS(.v18),
+        .macOS(.v14),
+        .iOS(.v17),
     ],
     products: [
         .library(
