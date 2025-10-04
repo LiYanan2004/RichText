@@ -16,6 +16,14 @@ final class InlineAttachmentTextView: PlatformTextView {
         textLayoutManager?.textContentManager
     }
     
+    override var intrinsicContentSize: CGSize {
+        #if canImport(AppKit)
+        CGSize(width: PlatformView.noIntrinsicMetric, height: _measuredContentHeight)
+        #else
+        CGSize(width: PlatformView.noIntrinsicMetric, height: PlatformView.noIntrinsicMetric)
+        #endif
+    }
+    
     private func setAttributedString(_ attributedString: AttributedString) {
         guard let _textStorage else { return }
         
@@ -81,30 +89,6 @@ final class InlineAttachmentTextView: PlatformTextView {
             }
         }
     }
-    
-    private func enumerateInlineHostingAttchment(
-        in textStorage: NSTextStorage,
-        handler: (InlineHostingAttachment, NSRange) -> Void
-    ) {
-        let range = NSRange(location: 0, length: textStorage.length)
-        textStorage.enumerateAttribute(.attachment, in: range) { value, range, _ in
-            guard let attachment = value as? InlineHostingAttachment else { return }
-            handler(attachment, range)
-        }
-    }
-    
-    private var textContainerOffset: CGPoint {
-        #if canImport(AppKit)
-        return textContainerOrigin
-        #elseif canImport(UIKit)
-        return CGPoint(
-            x: textContainerInset.left,
-            y: textContainerInset.top
-        )
-        #else
-        return .zero
-        #endif
-    }
 }
 
 // MARK: - Layout
@@ -138,14 +122,64 @@ extension InlineAttachmentTextView {
     #if canImport(AppKit)
     override func layout() {
         super.layout()
+        invalidateIntrinsicContentSize()
         updateAttachmentOrigins()
     }
     #elseif canImport(UIKit)
     override func layoutSubviews() {
         super.layoutSubviews()
+        invalidateIntrinsicContentSize()
         updateAttachmentOrigins()
     }
     #endif
+}
+
+// MARK: - Helpers
+
+extension InlineAttachmentTextView {
+    private var textContainerOffset: CGPoint {
+        #if canImport(AppKit)
+        return textContainerOrigin
+        #elseif canImport(UIKit)
+        return CGPoint(
+            x: textContainerInset.left,
+            y: textContainerInset.top
+        )
+        #else
+        return .zero
+        #endif
+    }
+    
+    private var _measuredContentHeight: CGFloat {
+        guard let textLayoutManager else { return bounds.height }
+        
+        textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
+
+        var maxY: CGFloat = 0
+        textLayoutManager.enumerateTextSegments(
+            in: textLayoutManager.documentRange,
+            type: .standard,
+            options: []
+        ) { _, segmentFrame, _, _ in
+            if segmentFrame.maxY > maxY { maxY = segmentFrame.maxY }
+            return true
+        }
+        
+        let totalHeight = maxY + textContainerOffset.y
+        return ceil(totalHeight)
+    }
+    
+    private func enumerateInlineHostingAttchment(
+        in textStorage: NSTextStorage,
+        handler: (InlineHostingAttachment, NSRange) -> Void
+    ) {
+        let range = NSRange(location: 0, length: textStorage.length)
+        textStorage.enumerateAttribute(.attachment, in: range) { value, range, _ in
+            guard let attachment = value as? InlineHostingAttachment else { return }
+            handler(attachment, range)
+        }
+    }
+    
 }
 
 // MARK: - Auxiliary

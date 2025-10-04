@@ -24,10 +24,10 @@ struct _TextView_AppKit: NSViewRepresentable {
         
         // Sizing
         textView.autoresizingMask = [.width]
-        textView.isVerticallyResizable = false
+        textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.heightTracksTextView = true
+        textView.textContainer?.heightTracksTextView = false
         
         return textView
     }

@@ -25,6 +25,26 @@ struct _TextView_UIKit: UIViewRepresentable {
         return textView
     }
     
+    // For UITextView, it comes with a UIScrollView
+    //
+    // Since we have override `intrinsticContentSize` and disabled scrolling, it should act like a normal UIView
+    //
+    // For better control of SwiftUI View size when place it inside a ScrollView, we use `sizeThatFits` to explicitly calculate a size in SwiftUI.
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: InlineAttachmentTextView,
+        context: Context
+    ) -> CGSize? {
+        uiView.sizeThatFits(
+            proposal.replacingUnspecifiedDimensions(
+                by: CGSize(
+                    width: UIView.noIntrinsicMetric,
+                    height: UIView.noIntrinsicMetric
+                )
+            )
+        )
+    }
+    
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
         textView.attributedContent = attributedString
     }
@@ -38,13 +58,6 @@ struct _TextView_UIKit: UIViewRepresentable {
             self.parent = parent
         }
         
-    }
-}
-
-private extension AttributedString {
-    var hasExplicitForegroundColor: Bool {
-        for run in runs { if run.foregroundColor != nil { return true } }
-        return false
     }
 }
 #endif

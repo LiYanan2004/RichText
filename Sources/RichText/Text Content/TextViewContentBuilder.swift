@@ -51,4 +51,8 @@ public enum TextViewContentBuilder {
     public static func buildExpression<Content: View>(_ expression: Content) -> TextViewContent {
         TextViewContent(.attachment(InlineHostingAttachment(expression)))
     }
+    
+    public static func buildExpression(_ expression: Text) -> TextViewContent {
+        TextViewContent(.string(expression._resolveText(in: EnvironmentValues())))
+    }
 }
