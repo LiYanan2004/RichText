@@ -18,6 +18,7 @@ final class InlineAttachmentTextView: PlatformTextView {
     
     override var intrinsicContentSize: CGSize {
         #if canImport(AppKit)
+        // FIXME: Is there any efficient way to calculate the height of the view?
         CGSize(width: PlatformView.noIntrinsicMetric, height: _measuredContentHeight)
         #else
         CGSize(width: PlatformView.noIntrinsicMetric, height: PlatformView.noIntrinsicMetric)
@@ -51,7 +52,7 @@ final class InlineAttachmentTextView: PlatformTextView {
         }
     }
     
-    private func updateAttachmentOrigins() {
+    func updateAttachmentOrigins() {
         guard let textLayoutManager, let _textStorage, let textContentManager else {
             return
         }
@@ -91,49 +92,6 @@ final class InlineAttachmentTextView: PlatformTextView {
     }
 }
 
-// MARK: - Layout
-
-extension InlineAttachmentTextView {
-    private func invalidateTextLayout(at range: NSRange) {
-        guard let textLayoutManager,
-              let textContentManager = textLayoutManager.textContentManager else {
-            return
-        }
-    
-        let textRange = NSTextRange(range, textContentManager: textContentManager)
-        guard let textRange else { return }
-        
-        textLayoutManager.invalidateLayout(for: textRange)
-        textLayoutManager.ensureLayout(for: textRange)
-        
-        _invalidateTextLayout()
-    }
-    
-    private func _invalidateTextLayout() {
-        #if canImport(AppKit)
-        needsLayout = true
-        setNeedsDisplay(bounds)
-        #elseif canImport(UIKit)
-        setNeedsLayout()
-        setNeedsDisplay()
-        #endif
-    }
-    
-    #if canImport(AppKit)
-    override func layout() {
-        super.layout()
-        invalidateIntrinsicContentSize()
-        updateAttachmentOrigins()
-    }
-    #elseif canImport(UIKit)
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        invalidateIntrinsicContentSize()
-        updateAttachmentOrigins()
-    }
-    #endif
-}
-
 // MARK: - Helpers
 
 extension InlineAttachmentTextView {
@@ -159,7 +117,7 @@ extension InlineAttachmentTextView {
         textLayoutManager.enumerateTextSegments(
             in: textLayoutManager.documentRange,
             type: .standard,
-            options: []
+            options: [.rangeNotRequired]
         ) { _, segmentFrame, _, _ in
             if segmentFrame.maxY > maxY { maxY = segmentFrame.maxY }
             return true
@@ -220,22 +178,5 @@ fileprivate extension NSMutableAttributedString {
             }
         }
         #endif
-    }
-}
-
-fileprivate extension NSTextRange {
-    convenience init?(_ nsRange: NSRange, textContentManager: NSTextContentManager) {
-        let documentStart = textContentManager.documentRange.location
-        let startLocation = textContentManager.location(
-            documentStart,
-            offsetBy: nsRange.location
-        )
-        guard let startLocation else { return nil }
-        
-        let endLocation = textContentManager.location(
-            documentStart,
-            offsetBy: nsRange.location + nsRange.length
-        )
-        self.init(location: startLocation, end: endLocation)
     }
 }
