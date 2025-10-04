@@ -35,7 +35,29 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     public init<Content: View>(_ content: Content, equivalentText: String? = nil) {
         self.view = AnyView(content)
         self.equivalentText = equivalentText
-        self.state = State(size: NSHostingView(rootView: view).intrinsicContentSize)
+
+        #if canImport(AppKit)
+        let hostingView = NSHostingView(rootView: view)
+        let initialSize = hostingView.intrinsicContentSize
+        #elseif canImport(UIKit)
+        let hostingController = UIHostingController(rootView: view)
+        hostingController.view.backgroundColor = .clear
+        hostingController.view.setNeedsLayout()
+        hostingController.view.layoutIfNeeded()
+
+        let intrinsic = hostingController.view.intrinsicContentSize
+        let resolvedIntrinsic = CGSize(
+            width: intrinsic.width == UIView.noIntrinsicMetric ? 0 : intrinsic.width,
+            height: intrinsic.height == UIView.noIntrinsicMetric ? 0 : intrinsic.height
+        )
+        let fallback = hostingController.view.sizeThatFits(UIView.layoutFittingCompressedSize)
+        let isIntrinsicResolved = resolvedIntrinsic.width > 0 && resolvedIntrinsic.height > 0
+        let initialSize = isIntrinsicResolved ? resolvedIntrinsic : fallback
+        #else
+        let initialSize = CGSize(width: 10, height: 10)
+        #endif
+
+        self.state = State(size: initialSize)
         super.init(data: nil, ofType: nil)
     }
     
@@ -49,7 +71,7 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
         glyphPosition position: CGPoint,
         characterIndex charIndex: Int
     ) -> CGRect {
-        let size = state.size ?? CGSize(width: 10, height: 10)
+        let size = state.size == .zero ? CGSize(width: 10, height: 10) : state.size
         return CGRect(origin: .zero, size: size)
     }
     
@@ -57,12 +79,13 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
         forBounds imageBounds: CGRect,
         textContainer: NSTextContainer?,
         characterIndex charIndex: Int
-    ) -> NSImage? {
+    ) -> PlatformImage? {
         return nil
     }
     
+    
     public override func viewProvider(
-        for parentView: NSView?,
+        for parentView: PlatformView?,
         location: any NSTextLocation,
         textContainer: NSTextContainer?
     ) -> NSTextAttachmentViewProvider? {
