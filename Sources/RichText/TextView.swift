@@ -21,16 +21,18 @@ public struct TextView: View {
                 self.attachments = content.attachments
             }
             .overlay(alignment: .topLeading) {
-                ForEach(attachments) { attachment in
-                    attachment.view
-                        .onGeometryChange(for: CGSize.self, of: \.size) { size in
-                            attachment.state.size = size
-                        }
-                        .offset(
-                            x: attachment.state.origin?.x ?? 0,
-                            y: attachment.state.origin?.y ?? 0
-                        )
-                        .opacity(attachment.state.origin == nil ? 0 : 1)
+                ZStack(alignment: .topLeading) {
+                    ForEach(attachments) { attachment in
+                        attachment.view
+                            .onGeometryChange(for: CGSize.self, of: \.size) { size in
+                                attachment.state.size = size
+                            }
+                            .offset(
+                                x: attachment.state.origin?.x ?? 0,
+                                y: attachment.state.origin?.y ?? 0
+                            )
+                            .opacity(attachment.state.origin == nil ? 0 : 1)
+                    }
                 }
             }
     }
