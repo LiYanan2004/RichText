@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  InlineAttachmentTextView.Layout.swift
 //  RichText
 //
 //  Created by Yanan Li on 2025/10/4.

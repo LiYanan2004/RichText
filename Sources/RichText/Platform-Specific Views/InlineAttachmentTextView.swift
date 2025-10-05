@@ -8,11 +8,11 @@
 import SwiftUI
 
 final class InlineAttachmentTextView: PlatformTextView {
-    var attributedContent: AttributedString = .init() {
+    var _attributedString: AttributedString = .init() {
         willSet { setAttributedString(newValue) }
     }
     
-    private var textContentManager: NSTextContentManager? {
+    var textContentManager: NSTextContentManager? {
         textLayoutManager?.textContentManager
     }
     
@@ -96,50 +96,12 @@ final class InlineAttachmentTextView: PlatformTextView {
         }
     }
     
-    func updateAttachmentOrigins() {
-        guard let textLayoutManager, let _textStorage, let textContentManager else {
-            return
-        }
-        
-        textLayoutManager.ensureLayout(
-            for: textLayoutManager.documentRange
-        )
-        
-        enumerateInlineHostingAttchment(
-            in: _textStorage
-        ) { attachment, range in
-            let textRange = NSTextRange(
-                range,
-                textContentManager: textContentManager
-            )
-            guard let textRange else { return }
-            
-            var firstFrame: CGRect?
-            textLayoutManager.enumerateTextSegments(
-                in: textRange,
-                type: .standard,
-                options: []
-            ) { _, segmentFrame, _, _ in
-                firstFrame = segmentFrame
-                return false
-            }
-            
-            guard let segmentFrame = firstFrame else { return }
-            let origin = CGPoint(
-                x: segmentFrame.origin.x + textContainerOffset.x,
-                y: segmentFrame.origin.y + textContainerOffset.y
-            )
-            if attachment.state.origin != origin {
-                attachment.state.origin = origin
-            }
-        }
-    }
 }
 
 // MARK: - Helpers
 
 extension InlineAttachmentTextView {
-    private var textContainerOffset: CGPoint {
+    var textContainerOffset: CGPoint {
         #if canImport(AppKit)
         return textContainerOrigin
         #elseif canImport(UIKit)
@@ -171,7 +133,7 @@ extension InlineAttachmentTextView {
         return ceil(totalHeight)
     }
     
-    private func enumerateInlineHostingAttchment(
+    func enumerateInlineHostingAttchment(
         in textStorage: NSTextStorage,
         handler: (InlineHostingAttachment, NSRange) -> Void
     ) {
@@ -181,34 +143,35 @@ extension InlineAttachmentTextView {
             handler(attachment, range)
         }
     }
-    
 }
 
-// MARK: - Auxiliary
+// MARK: - Helpers
 
 extension InlineAttachmentTextView {
     /// An optional value of `NSLayoutManager` for cross-platform code statbility.
     ///
     /// - warning: Calling this would switch to TextKit 1 and cause layout or behavior changes.
     @available(*, deprecated, message: "Calling this would switch to TextKit 1.")
-    private var _layoutManager: NSLayoutManager? {
+    var _layoutManager: NSLayoutManager? {
         self.layoutManager
     }
     
     /// An optional value of `NSTextContainer` for cross-platform code statbility.
     ///
     /// For UIKit, this is guaranteed to be non-`nil`. For AppKit, this could be `nil`.
-    private var _textContainer: NSTextContainer? {
+    var _textContainer: NSTextContainer? {
         self.textContainer
     }
     
     /// An optional value of `NSTextStorage` for cross-platform code statbility.
     ///
     /// For UIKit, this is guaranteed to be non-`nil`. For AppKit, this could be `nil`.
-    private var _textStorage: NSTextStorage? {
+    var _textStorage: NSTextStorage? {
         self.textStorage
     }
 }
+
+// MARK: - Auxiliary
 
 fileprivate extension NSMutableAttributedString {
     func _fixForgroundColorIfNecessary(in range: NSRange) {

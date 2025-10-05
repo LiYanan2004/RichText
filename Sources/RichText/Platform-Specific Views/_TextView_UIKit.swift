@@ -52,7 +52,7 @@ struct _TextView_UIKit: UIViewRepresentable {
     }
     
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
-        textView.attributedContent = attributedString
+        textView._attributedString = attributedString
     }
     
     final class Coordinator: NSObject, UITextViewDelegate {
