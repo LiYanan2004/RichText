@@ -22,7 +22,7 @@ struct _TextView_UIKit: UIViewRepresentable {
         textView.isSelectable = true
         textView.isScrollEnabled = false
         
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, tvOS 26.0, watchOS 26.0, *) {
             textView.font = Font.default
                 .resolve(in: context.environment.fontResolutionContext)
                 .ctFont as UIFont
