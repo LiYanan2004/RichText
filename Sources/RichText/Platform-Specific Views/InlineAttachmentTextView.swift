@@ -25,6 +25,49 @@ final class InlineAttachmentTextView: PlatformTextView {
         #endif
     }
     
+    #if canImport(AppKit)
+    override func attributedSubstring(
+        forProposedRange range: NSRange,
+        actualRange: NSRangePointer?
+    ) -> NSAttributedString? {
+        guard let original = super.attributedSubstring(
+            forProposedRange: range,
+            actualRange: actualRange
+        ) else { return nil }
+        
+        return replaceAttachmentWithEquivalentText(
+            in: original
+        )
+    }
+    #else
+    override func attributedText(in range: UITextRange) -> NSAttributedString {
+        replaceAttachmentWithEquivalentText(
+            in: super.attributedText(in: range)
+        )
+    }
+
+    override func text(in range: UITextRange) -> String? {
+        return attributedText(in: range).string
+    }
+    #endif
+    
+    private func replaceAttachmentWithEquivalentText(
+        in attributedString: NSAttributedString
+    ) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(attributedString: attributedString)
+        mutable.enumerateAttribute(
+            .attachment,
+            in: NSRange(location: 0, length: mutable.length),
+            options: []
+        ) { value, subrange, _ in
+            guard let hosting = value as? InlineHostingAttachment else { return }
+            if let replacement = hosting.equivalentText {
+                mutable.replaceCharacters(in: subrange, with: replacement)
+            }
+        }
+        return mutable
+    }
+    
     private func setAttributedString(_ attributedString: AttributedString) {
         guard let _textStorage else { return }
         
