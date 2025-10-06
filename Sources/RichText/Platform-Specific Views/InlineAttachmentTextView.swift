@@ -56,14 +56,12 @@ final class InlineAttachmentTextView: PlatformTextView {
     ) -> NSAttributedString {
         let mutable = NSMutableAttributedString(attributedString: attributedString)
         mutable.enumerateAttribute(
-            .attachment,
+            .inlineHostingViewEquivalentText,
             in: NSRange(location: 0, length: mutable.length),
             options: []
-        ) { value, subrange, _ in
-            guard let hosting = value as? InlineHostingAttachment else { return }
-            if let replacement = hosting.equivalentText {
-                mutable.replaceCharacters(in: subrange, with: replacement)
-            }
+        ) { equivalentText, subrange, _ in
+            guard let equivalentText = equivalentText as? String?, let equivalentText else { return }
+            mutable.replaceCharacters(in: subrange, with: equivalentText)
         }
         return mutable
     }

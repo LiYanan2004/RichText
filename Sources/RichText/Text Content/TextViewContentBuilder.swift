@@ -49,7 +49,7 @@ public enum TextViewContentBuilder {
 
     @MainActor
     public static func buildExpression<Content: View>(_ expression: Content) -> TextViewContent {
-        TextViewContent(.attachment(InlineHostingAttachment(expression)))
+        TextViewContent(.view(InlineHostingAttachment(expression), eqivalentText: nil))
     }
     
     public static func buildExpression(_ expression: Text) -> TextViewContent {

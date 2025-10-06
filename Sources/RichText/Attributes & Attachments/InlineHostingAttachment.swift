@@ -9,7 +9,6 @@ import SwiftUI
 
 public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unchecked Sendable {
     var view: AnyView
-    let equivalentText: String?
     public let id = UUID()
     
     var state: State
@@ -32,9 +31,8 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     }
     
     @MainActor
-    public init<Content: View>(_ content: Content, equivalentText: String? = nil) {
+    public init<Content: View>(_ content: Content) {
         self.view = AnyView(content)
-        self.equivalentText = equivalentText
 
         #if canImport(AppKit)
         let hostingView = NSHostingView(rootView: view)

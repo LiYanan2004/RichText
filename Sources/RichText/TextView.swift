@@ -65,7 +65,7 @@ public struct TextView: View {
 fileprivate extension TextViewContent {
     var attachments: [InlineHostingAttachment] {
         fragments.compactMap { fragment in
-            if case let .attachment(attachment) = fragment {
+            if case let .view(attachment, _) = fragment {
                 return attachment
             }
             return nil
