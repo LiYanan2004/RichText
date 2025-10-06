@@ -187,13 +187,7 @@ fileprivate extension NSMutableAttributedString {
         #endif
     }
     
-    #if canImport(AppKit)
-    typealias FontType = NSFont
-    #else
-    typealias FontType = UIFont
-    #endif
-    
-    func _fixFont(_ font: FontType?, in range: NSRange) {
+    func _fixFont(_ font: PlatformFont?, in range: NSRange) {
         guard let font else { return }
         
         enumerateAttributes(

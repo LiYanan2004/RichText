@@ -31,6 +31,10 @@ struct _TextView_UIKit: UIViewRepresentable {
         return textView
     }
     
+    func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
+        textView._attributedString = attributedString
+    }
+    
     // For UITextView, it comes with a UIScrollView
     //
     // Since we have override `intrinsticContentSize` and disabled scrolling, it should act like a normal UIView
@@ -49,10 +53,6 @@ struct _TextView_UIKit: UIViewRepresentable {
                 )
             )
         )
-    }
-    
-    func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
-        textView._attributedString = attributedString
     }
     
     final class Coordinator: NSObject, UITextViewDelegate {

@@ -10,7 +10,8 @@ import SwiftUI
 public struct TextView: View {
     private var content: TextViewContent
     @State private var attachments: [InlineHostingAttachment] = []
-
+    @Environment(\.fontResolutionContext) private var fontResolutionContext
+    
     public init(@TextViewContentBuilder content: () -> TextViewContent) {
         self.content = content()
     }
@@ -42,9 +43,17 @@ public struct TextView: View {
     
     private var _textView: some View {
         #if canImport(AppKit)
-        _TextView_AppKit(attributedString: content.attributedString)
+        _TextView_AppKit(
+            attributedString: content.attributedString(
+                fontResolutionContext: fontResolutionContext
+            )
+        )
         #elseif canImport(UIKit)
-        _TextView_UIKit(attributedString: content.attributedString)
+        _TextView_UIKit(
+            attributedString: content.attributedString(
+                fontResolutionContext: fontResolutionContext
+            )
+        )
         #else
         EmptyView()
         #endif
