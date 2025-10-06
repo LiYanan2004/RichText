@@ -143,6 +143,112 @@ extension InlineAttachmentTextView {
     }
 }
 
+// MARK: - Attachment Positioning
+
+extension InlineAttachmentTextView {
+    func updateAttachmentOrigins() {
+        guard let textLayoutManager, let _textStorage, let textContentManager else {
+            return
+        }
+        
+        textLayoutManager.ensureLayout(
+            for: textLayoutManager.documentRange
+        )
+        
+        enumerateInlineHostingAttchment(
+            in: _textStorage
+        ) { attachment, range in
+            let textRange = NSTextRange(
+                range,
+                textContentManager: textContentManager
+            )
+            guard let textRange else { return }
+            
+            var firstFrame: CGRect?
+            textLayoutManager.enumerateTextSegments(
+                in: textRange,
+                type: .standard,
+                options: []
+            ) { _, segmentFrame, _, _ in
+                firstFrame = segmentFrame
+                return false
+            }
+            
+            guard let segmentFrame = firstFrame else { return }
+            let origin = CGPoint(
+                x: segmentFrame.origin.x + textContainerOffset.x,
+                y: segmentFrame.origin.y + textContainerOffset.y
+            )
+            if attachment.state.origin != origin {
+                attachment.state.origin = origin
+            }
+        }
+    }
+}
+
+// MARK: - Layout
+
+extension InlineAttachmentTextView {
+    func invalidateTextLayout(at range: NSRange) {
+        guard let textLayoutManager,
+              let textContentManager = textLayoutManager.textContentManager else {
+            return
+        }
+    
+        let textRange = NSTextRange(range, textContentManager: textContentManager)
+        guard let textRange else { return }
+        
+        textLayoutManager.invalidateLayout(for: textRange)
+        textLayoutManager.ensureLayout(for: textRange)
+        
+        _invalidateTextLayout()
+    }
+    
+    private func _invalidateTextLayout() {
+        #if canImport(AppKit)
+        needsLayout = true
+        setNeedsDisplay(bounds)
+        #elseif canImport(UIKit)
+        setNeedsLayout()
+        setNeedsDisplay()
+        #endif
+    }
+    
+    #if canImport(AppKit)
+    override func layout() {
+        super.layout()
+        invalidateIntrinsicContentSize()
+        updateAttachmentOrigins()
+    }
+    #elseif canImport(UIKit)
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        invalidateIntrinsicContentSize()
+        updateAttachmentOrigins()
+    }
+    #endif
+}
+
+// MARK: - Auxiliary
+
+extension NSTextRange {
+    convenience init?(_ nsRange: NSRange, textContentManager: NSTextContentManager) {
+        let documentStart = textContentManager.documentRange.location
+        let startLocation = textContentManager.location(
+            documentStart,
+            offsetBy: nsRange.location
+        )
+        guard let startLocation else { return nil }
+        
+        let endLocation = textContentManager.location(
+            documentStart,
+            offsetBy: nsRange.location + nsRange.length
+        )
+        self.init(location: startLocation, end: endLocation)
+    }
+}
+
+
 // MARK: - Helpers
 
 extension InlineAttachmentTextView {
