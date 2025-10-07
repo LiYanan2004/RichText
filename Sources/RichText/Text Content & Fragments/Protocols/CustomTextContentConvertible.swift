@@ -9,3 +9,5 @@
 public protocol CustomTextContentConvertible {
     var textContent: TextViewContent { get }
 }
+
+public protocol InterFragment : CustomTextContentConvertible { }
