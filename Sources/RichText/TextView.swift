@@ -26,10 +26,7 @@ public struct TextView: View {
                     ForEach(attachments) { attachment in
                         attachment.view
                             .onGeometryChange(for: CGSize.self, of: \.size) { size in
-                                attachment.state.size = CGSize(
-                                    width: size.width,
-                                    height: size.height * 0.9 // reserve 10% as descent
-                                )
+                                attachment.state.size = size
                             }
                             .offset(
                                 x: attachment.state.origin?.x ?? 0,

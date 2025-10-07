@@ -22,6 +22,7 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
                 onSizeChange?()
             }
         }
+        
         var origin: CGPoint?
         var onSizeChange: (() -> Void)?
         
@@ -41,18 +42,7 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
         let initialSize = hostingView.intrinsicContentSize
         #elseif canImport(UIKit)
         let hostingController = UIHostingController(rootView: view)
-        hostingController.view.backgroundColor = .clear
-        hostingController.view.setNeedsLayout()
-        hostingController.view.layoutIfNeeded()
-
-        let intrinsic = hostingController.view.intrinsicContentSize
-        let resolvedIntrinsic = CGSize(
-            width: intrinsic.width == UIView.noIntrinsicMetric ? 0 : intrinsic.width,
-            height: intrinsic.height == UIView.noIntrinsicMetric ? 0 : intrinsic.height
-        )
-        let fallback = hostingController.view.sizeThatFits(UIView.layoutFittingCompressedSize)
-        let isIntrinsicResolved = resolvedIntrinsic.width > 0 && resolvedIntrinsic.height > 0
-        let initialSize = isIntrinsicResolved ? resolvedIntrinsic : fallback
+        let initialSize = hostingController.view.intrinsicContentSize
         #else
         let initialSize = CGSize(width: 10, height: 10)
         #endif
@@ -71,7 +61,51 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
         glyphPosition position: CGPoint,
         characterIndex charIndex: Int
     ) -> CGRect {
-        let size = state.size == .zero ? CGSize(width: 10, height: 10) : state.size
+        let size: CGSize
+        if state.size == .zero {
+            size = CGSize(width: 10, height: 10)
+        } else if let textContainerSize = textContainer?.size {
+            if position.x == .zero, position.x + state.size.width >= textContainerSize.width {
+                // full width attachment
+                // This kind of view will not mix with other text, so we don't need to adjust height
+                size = state.size
+            } else {
+                // inline attachment
+                var font: PlatformFont?
+                if let textContentManager = textContainer?.textLayoutManager?.textContentManager as? NSTextContentStorage,
+                   let attributedString = textContentManager.attributedString {
+                    let effectiveRange = 0 ..< attributedString.length
+                    
+                    let ranges = [(charIndex - 1 ..< charIndex), (charIndex + 1 ..< charIndex + 2)]
+                    if let range = ranges.first(where: {
+                        guard effectiveRange.contains($0) else { return false }
+                        
+                        let lastCharacter = attributedString
+                            .attributedSubstring(from: NSRange($0))
+                            .string.last
+                        guard let lastCharacter else {
+                            return true // Skip the check
+                        }
+                        
+                        return !lastCharacter.isNewline
+                    }) {
+                        font = attributedString.attribute(
+                            .font,
+                            at: range.lowerBound,
+                            effectiveRange: nil
+                        ) as? PlatformFont
+                    }
+                }
+                
+                size = CGSize(
+                    width: state.size.width,
+                    height: state.size.height * (1 - _descentFactor(font))
+                )
+            }
+        } else {
+            size = state.size
+        }
+        
         return CGRect(origin: .zero, size: size)
     }
     
@@ -82,8 +116,7 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     ) -> PlatformImage? {
         return nil
     }
-    
-    
+
     public override func viewProvider(
         for parentView: PlatformView?,
         location: any NSTextLocation,
@@ -92,13 +125,22 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
         return nil
     }
     
-    public override func isEqual(_ object: Any?) -> Bool {
-        guard let other = object as? InlineHostingAttachment else { return false }
-        return self.id == other.id
+    @inlinable func _descentFactor(_ font: PlatformFont?) -> CGFloat {
+        guard let font else {
+            return 0.2 // reserve 20% as descent by default.
+        }
+        
+        let lineHeight = abs(font.ascender) + abs(font.descender)
+        return abs(font.descender) / lineHeight
     }
 }
 
 extension InlineHostingAttachment {
+    public override func isEqual(_ object: Any?) -> Bool {
+        guard let other = object as? InlineHostingAttachment else { return false }
+        return self.id == other.id
+    }
+    
     static func == (lhs: InlineHostingAttachment, rhs: InlineHostingAttachment) -> Bool {
         lhs.id == rhs.id
     }
