@@ -7,10 +7,6 @@
 
 import SwiftUI
 
-public protocol CustomTextContentConvertible {
-    var textContent: TextViewContent { get }
-}
-
 public struct TextViewContent: Hashable {
     public enum Fragment: Hashable {
         case string(String)
@@ -79,8 +75,4 @@ public struct TextViewContent: Hashable {
         
         return attributedString
     }
-}
-
-extension TextViewContent.Fragment: CustomTextContentConvertible {
-    public var textContent: TextViewContent { TextViewContent(self) }
 }
