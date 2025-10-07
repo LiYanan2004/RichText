@@ -52,7 +52,10 @@ public struct TextView: View {
             )
         )
         #else
-        EmptyView()
+        ContentUnavailableView(
+            "Content Not Available",
+            systemImage: "exclamationmark.triangle"
+        )
         #endif
     }
 }

@@ -64,7 +64,9 @@ Other SwiftUI views are added **as an individual text element**, which means tex
 ```swift
 TextView {
     "Tap the "
-    Text("button").foregroundColor(.blue)
+    Button("button") {
+        print("Button Clicked")
+    }
     " to continue "
     Image(systemName: "arrow.right.circle.fill")
 }
