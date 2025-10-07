@@ -14,8 +14,8 @@ public struct Space: InterFragment {
         self.count = count
     }
 
-    public var textContent: TextViewContent {
-        TextViewContent(
+    public var textContent: TextContent {
+        TextContent(
             .string(
                 [String](repeating: " ", count: count).joined()
             )

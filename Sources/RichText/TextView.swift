@@ -8,11 +8,11 @@
 import SwiftUI
 
 public struct TextView: View {
-    private var content: TextViewContent
+    private var content: TextContent
     @State private var attachments: [InlineHostingAttachment] = []
     @Environment(\.fontResolutionContext) private var fontResolutionContext
     
-    public init(@TextViewContentBuilder content: () -> TextViewContent) {
+    public init(@TextContentBuilder content: () -> TextContent) {
         self.content = content()
     }
 
@@ -62,7 +62,7 @@ public struct TextView: View {
 
 // MARK: - Auxiliary
 
-fileprivate extension TextViewContent {
+fileprivate extension TextContent {
     var attachments: [InlineHostingAttachment] {
         fragments.compactMap { fragment in
             if case .view(let attachment, _) = fragment {

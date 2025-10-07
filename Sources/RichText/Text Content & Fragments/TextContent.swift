@@ -1,5 +1,5 @@
 //
-//  TextViewContent.swift
+//  TextContent.swift
 //  RichText
 //
 //  Created by Yanan Li on 2025/10/2.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-public struct TextViewContent: Hashable {
+public struct TextContent: Hashable {
     public enum Fragment: Hashable {
         case string(String)
         case attributedString(AttributedString)
@@ -39,11 +39,11 @@ public struct TextViewContent: Hashable {
         self.fragments = fragments
     }
 
-    static public func + (lhs: TextViewContent, rhs: TextViewContent) -> TextViewContent {
-        TextViewContent(lhs.fragments + rhs.fragments)
+    static public func + (lhs: TextContent, rhs: TextContent) -> TextContent {
+        TextContent(lhs.fragments + rhs.fragments)
     }
     
-    public static func += (lhs: inout TextViewContent, rhs: TextViewContent) {
+    public static func += (lhs: inout TextContent, rhs: TextContent) {
         lhs.fragments += rhs.fragments
     }
 

@@ -14,8 +14,8 @@ public struct Tab: InterFragment {
         self.count = count
     }
 
-    public var textContent: TextViewContent {
-        TextViewContent(
+    public var textContent: TextContent {
+        TextContent(
             .string(
                 [String](repeating: "\t", count: count).joined()
             )

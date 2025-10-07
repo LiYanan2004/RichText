@@ -7,16 +7,15 @@
 
 import SwiftUI
 
-public struct Paragraph: CustomTextContentConvertible {
-    let content: () -> TextViewContent
+public struct Paragraph: TextContentProviding {
+    let content: () -> TextContent
 
-    public init(@TextViewContentBuilder content: @escaping () -> TextViewContent) {
+    public init(@TextContentBuilder content: @escaping () -> TextContent) {
         self.content = content
     }
 
-    public var textContent: TextViewContent {
-        var content = content()
-        content += TextViewContent(.string("\n"))
-        return content
+    public var textContent: TextContent {
+        content()
+        LineBreak()
     }
 }

@@ -14,8 +14,8 @@ public struct LineBreak: InterFragment {
         self.count = count
     }
 
-    public var textContent: TextViewContent {
-        TextViewContent(
+    public var textContent: TextContent {
+        TextContent(
             .string(
                 [String](repeating: "\n", count: count).joined()
             )
