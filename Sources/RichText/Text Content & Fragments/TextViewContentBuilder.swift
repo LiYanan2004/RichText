@@ -57,6 +57,15 @@ public enum TextViewContentBuilder {
     }
     
     public static func buildExpression(_ expression: Text) -> TextViewContent {
-        TextViewContent(.string(expression._resolveText(in: EnvironmentValues())))
+        if let attributedString = expression._attributedString {
+            return TextViewContent(.attributedString(attributedString))
+        }
+        
+        let content = expression._rawOrResolvedString
+        do {
+            return try TextViewContent(.attributedString(AttributedString(markdown: content)))
+        } catch {
+            return TextViewContent(.string(content))
+        }
     }
 }

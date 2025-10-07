@@ -51,13 +51,11 @@ TextView {
 
 You can embed SwiftUI view along with other text as well, while preserving text selection capability.
 
-Note that `SwiftUI.Text` will be resolved as **plain string** to provide normal text selection, which means:
-- string localization will be preserved
-- markdown attributes will be omitted (Use `AttributedString(markdown:)` instead.)
+`RichText` will try to extract `SwiftUI.Text` content and convert it into `AttributedString`. If that fails, a plain string will be used instead.
 
 ```swift
 TextView {
-    Text("Hi, This is **RichText**.") // Resolved as "Hi, This is RichText."
+    Text("Hi, This is **RichText**.")
 }
 ```
 
