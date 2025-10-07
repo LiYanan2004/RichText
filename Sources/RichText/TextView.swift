@@ -61,11 +61,15 @@ public struct TextView: View {
 
 fileprivate extension TextViewContent {
     var attachments: [InlineHostingAttachment] {
-        fragments.compactMap { fragment in
-            if case let .view(attachment, _) = fragment {
-                return attachment
+        fragments.flatMap { fragment in
+            switch fragment {
+                case .view(let attachment, _):
+                    return [attachment]
+                case .attributedString(let attributedString):
+                    return attributedString.runs.compactMap { $0.inlineHostingAttachment }
+                case .string:
+                    return []
             }
-            return nil
         }
     }
 }

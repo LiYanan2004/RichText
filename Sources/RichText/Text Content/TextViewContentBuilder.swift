@@ -39,6 +39,10 @@ public enum TextViewContentBuilder {
         expression
     }
 
+    public static func buildExpression(_ expression: some CustomTextContentConvertible) -> TextViewContent {
+        expression.textContent
+    }
+
     public static func buildExpression(_ expression: String) -> TextViewContent {
         TextViewContent(.string(expression))
     }
