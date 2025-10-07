@@ -1,3 +1,5 @@
+<img src="Resources/logo.png" width=230>
+
 # RichText
 
 A Supplementary TextView for SwiftUI that provides better text selection experience, as well as enabling native view embedding using declarative syntax.
