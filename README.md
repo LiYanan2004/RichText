@@ -82,3 +82,46 @@ TextView {
 }
 ```
 
+#### Dynamic Views
+
+If the embeded view contains its own state, you will need to provide a unique view identifier using `.id(_:)` to bind the view's identity, otherwise, its state will be reset whenever the `textContent` is recomputed.
+
+In the following example, the state of the globe icon will get reset when `ContentView.body` gets re-computed without explicit id specified.
+
+> [!TIP]
+> You may need to add `.id(_:)` view modifier directly under embeded view.
+>
+> Currently, `.id(_:)` inside `View.Body` is not recognizable.
+
+```
+struct ContentView: View {
+    @State private var isOpaque: Bool = true
+   
+    var body: some View {
+        VStack {
+            Toggle("Opaque", isOn: $isOpaque)
+            TextView {
+                "Hello "
+                ColorfulGlobeIcon()
+                    .id("globe-icon") // Explicitly bind the identity here.
+                " World"
+            }
+            .opacity(isOpaque ? 1 : 0.5)
+        }
+    }
+}
+
+struct ColorfulGlobeIcon: View {
+    @State var color: Color = .random
+    
+    var body: some View {
+        Image(systemName: "globe")
+            .foregroundStyle(color)
+            .onTapGesture { 
+                color = .random
+            }
+            .id("globe-icon") // ❌ This does NOT bind the identity of the view internally
+    }
+}
+```
+
