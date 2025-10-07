@@ -11,12 +11,20 @@ let package = Package(
     products: [
         .library(
             name: "RichText",
-            targets: ["RichText"]
+            targets: [
+                "RichText",
+            ]
         ),
     ],
     targets: [
         .target(
-            name: "RichText"
+            name: "RichText",
+            dependencies: [
+                "ViewIntrospector"
+            ]
+        ),
+        .target(
+            name: "ViewIntrospector"
         ),
     ]
 )

@@ -6,10 +6,11 @@
 //
 
 import SwiftUI
+import ViewIntrospector
 
 public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unchecked Sendable {
-    var view: AnyView
-    public let id = UUID()
+    public var view: AnyView
+    public var id: AnyHashable
     
     var state: State
     @Observable
@@ -33,6 +34,7 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     @MainActor
     public init<Content: View>(_ content: Content) {
         self.view = AnyView(content)
+        self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
 
         #if canImport(AppKit)
         let hostingView = NSHostingView(rootView: view)
