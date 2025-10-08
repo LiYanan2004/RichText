@@ -26,6 +26,8 @@ final class InlineAttachmentTextView: PlatformTextView {
     }
     
     #if canImport(AppKit)
+    // FIXME: This only works for "Copy" and "Search with Google".
+    // Loopup, Translate, Share are using original strings
     override func attributedSubstring(
         forProposedRange range: NSRange,
         actualRange: NSRangePointer?
