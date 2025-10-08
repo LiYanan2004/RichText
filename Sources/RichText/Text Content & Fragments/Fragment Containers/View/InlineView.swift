@@ -39,7 +39,14 @@ extension InlineView {
         var attributedString: AttributedString?
         if let replacement {
             do {
-                attributedString = try AttributedString(markdown: replacement)
+                attributedString = try AttributedString(
+                    markdown: replacement,
+                    options: AttributedString.MarkdownParsingOptions(
+                        allowsExtendedAttributes: true,
+                        interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                        failurePolicy: .returnPartiallyParsedIfPossible
+                    )
+                )
             } catch {
                 attributedString = AttributedString(replacement)
             }
