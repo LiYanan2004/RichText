@@ -18,7 +18,6 @@ extension AttributeScopes {
         let foundation: AttributeScopes.FoundationAttributes
         
         let inlineHostingAttachment: AttributeScopes.RichTextAttributes.InlineHostingAttachmentAttribute
-        let equivalentText: AttributeScopes.RichTextAttributes.InlineHostingViewEquivalentTextAttribute
     }
     
     var richText: RichTextAttributes.Type { RichTextAttributes.self }

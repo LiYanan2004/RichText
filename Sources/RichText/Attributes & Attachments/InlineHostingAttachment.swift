@@ -7,10 +7,12 @@
 
 import SwiftUI
 import ViewIntrospector
+import UniformTypeIdentifiers
 
 public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unchecked Sendable {
     public var view: AnyView
     public var id: AnyHashable
+    public var replacement: AttributedString?
     
     var state: State
     @Observable
@@ -33,7 +35,7 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     }
     
     @MainActor
-    public init<Content: View>(_ content: Content) {
+    public init<Content: View>(_ content: Content, replacement: AttributedString?) {
         self.view = AnyView(content)
         self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
 
@@ -49,6 +51,8 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
 
         self.state = State(size: initialSize)
         super.init(data: nil, ofType: nil)
+        
+        self.replacement = replacement
     }
     
     required init?(coder: NSCoder) {

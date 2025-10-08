@@ -11,7 +11,7 @@ public struct TextContent: Hashable {
     public enum Fragment: Hashable {
         case string(String)
         case attributedString(AttributedString)
-        case view(InlineHostingAttachment, eqivalentText: String?)
+        case view(InlineHostingAttachment)
         
         @MainActor
         func asAttributedString() -> AttributedString {
@@ -20,10 +20,9 @@ public struct TextContent: Hashable {
                     return AttributedString(string)
                 case .attributedString(let attributedString):
                     return attributedString
-                case .view(let attachment, let eqivalentText):
+                case .view(let attachment):
                     let container = AttributeContainer()
                         .inlineHostingAttachment(attachment)
-                        .equivalentText(eqivalentText)
                     return AttributedString("\u{FFFC}", attributes: container)
             }
         }

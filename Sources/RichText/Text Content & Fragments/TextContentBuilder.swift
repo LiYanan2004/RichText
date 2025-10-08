@@ -39,6 +39,7 @@ public enum TextContentBuilder {
         expression
     }
 
+    @MainActor
     public static func buildExpression(_ expression: some TextContentProviding) -> TextContent {
         expression.textContent
     }
@@ -53,7 +54,7 @@ public enum TextContentBuilder {
 
     @MainActor
     public static func buildExpression<Content: View>(_ expression: Content) -> TextContent {
-        TextContent(.view(InlineHostingAttachment(expression), eqivalentText: nil))
+        TextContent(.view(InlineHostingAttachment(expression, replacement: nil)))
     }
     
     public static func buildExpression(_ expression: Text) -> TextContent {

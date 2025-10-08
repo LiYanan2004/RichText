@@ -34,7 +34,7 @@ final class InlineAttachmentTextView: PlatformTextView {
             forProposedRange: range,
             actualRange: actualRange
         ) else { return nil }
-        
+
         return replaceAttachmentWithEquivalentText(
             in: original
         )
@@ -49,6 +49,17 @@ final class InlineAttachmentTextView: PlatformTextView {
     override func text(in range: UITextRange) -> String? {
         return attributedText(in: range).string
     }
+    
+    // TODO: It would be better to have a way to directly modify the copying item for each attachment. `NSItemProviderWriting` is not working here.
+    override func copy(_ sender: Any?) {
+        guard let documentRange = textRange(from: beginningOfDocument, to: endOfDocument) else {
+            super.copy(sender)
+            return
+        }
+        
+        let attributedString = attributedText(in: documentRange)
+        UIPasteboard.general.setObjects([attributedString])
+    }
     #endif
     
     private func replaceAttachmentWithEquivalentText(
@@ -56,12 +67,27 @@ final class InlineAttachmentTextView: PlatformTextView {
     ) -> NSAttributedString {
         let mutable = NSMutableAttributedString(attributedString: attributedString)
         mutable.enumerateAttribute(
-            .inlineHostingViewEquivalentText,
+            .inlineHostingAttachment,
             in: NSRange(location: 0, length: mutable.length),
             options: []
-        ) { equivalentText, subrange, _ in
-            guard let equivalentText = equivalentText as? String?, let equivalentText else { return }
-            mutable.replaceCharacters(in: subrange, with: equivalentText)
+        ) { attachment, subrange, _ in
+            guard let attachment = attachment as? InlineHostingAttachment,
+                  let replacement = attachment.replacement else { return }
+            
+            let nsAttrString: NSAttributedString
+            do {
+                let _nsAttrString = try NSMutableAttributedString(
+                    attributedString: replacement.nsAttributedString
+                )
+                let range = NSRange(location: 0, length: _nsAttrString.length)
+                _nsAttrString._fixForgroundColorIfNecessary(in: range)
+                _nsAttrString._fixFont(self.font, in: range)
+                nsAttrString = _nsAttrString
+            } catch {
+                nsAttrString = NSAttributedString(replacement)
+            }
+            
+            mutable.replaceCharacters(in: subrange, with: nsAttrString)
         }
         return mutable
     }

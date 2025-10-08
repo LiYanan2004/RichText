@@ -6,6 +6,7 @@
 //
 
 public protocol TextContentProviding {
+    @MainActor
     @TextContentBuilder
     var textContent: TextContent { get }
 }
