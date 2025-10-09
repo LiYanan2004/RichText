@@ -12,7 +12,7 @@ Get to know the list of known issues and possible workaround.
 
 ### View Modifiers
 
-- Most of the text style view modifiers, such as `lineLimit(_:)`, `truncationMode(_:)`, `lineSpacing`, are not support yet
+- Most of the text style view modifiers, such as `truncationMode(_:)`, `lineSpacing(_:)`, are not support yet
 - `.font(_:)` is only available on OS 26 and newer
 
 ### Text Replacement
