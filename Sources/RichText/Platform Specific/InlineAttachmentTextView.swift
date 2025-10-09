@@ -193,20 +193,26 @@ extension InlineAttachmentTextView {
             guard let textRange else { return }
             
             var firstFrame: CGRect?
+            var baseline: CGFloat = .zero
             textLayoutManager.enumerateTextSegments(
                 in: textRange,
                 type: .standard,
-                options: []
-            ) { _, segmentFrame, _, _ in
+                options: [.rangeNotRequired]
+            ) { _, segmentFrame, segmentBaseline, _ in
                 firstFrame = segmentFrame
+                baseline = segmentBaseline
                 return false
             }
             
             guard let segmentFrame = firstFrame else { return }
-            let origin = CGPoint(
-                x: segmentFrame.origin.x + textContainerOffset.x,
-                y: segmentFrame.origin.y + textContainerOffset.y
-            )
+            
+            var origin = textContainerOffset
+            origin.x += segmentFrame.origin.x
+            // align top of the view to the baseline
+            origin.y += baseline + segmentFrame.minY
+            // align the baseline of the view to the "line" baseline
+            origin.y -= attachment.ascender ?? attachment.state.size.height
+            
             if attachment.state.origin != origin {
                 attachment.state.origin = origin
             }

@@ -93,6 +93,8 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    var ascender: CGFloat?
 
     public override func attachmentBounds(
         for textContainer: NSTextContainer?,
@@ -100,52 +102,60 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
         glyphPosition position: CGPoint,
         characterIndex charIndex: Int
     ) -> CGRect {
-        let size: CGSize
-        if state.size == .zero {
-            size = CGSize(width: 10, height: 10)
-        } else if let textContainerSize = textContainer?.size {
-            if position.x == .zero, position.x + state.size.width >= textContainerSize.width {
-                // full width attachment
-                // This kind of view will not mix with other text, so we don't need to adjust height
-                size = state.size
-            } else {
-                // inline attachment
-                var font: PlatformFont?
-                if let textContentManager = textContainer?.textLayoutManager?.textContentManager as? NSTextContentStorage,
-                   let attributedString = textContentManager.attributedString {
-                    let effectiveRange = 0 ..< attributedString.length
-                    
-                    let ranges = [(charIndex - 1 ..< charIndex), (charIndex + 1 ..< charIndex + 2)]
-                    if let range = ranges.first(where: {
-                        guard effectiveRange.contains($0) else { return false }
-                        
-                        let lastCharacter = attributedString
-                            .attributedSubstring(from: NSRange($0))
-                            .string.last
-                        guard let lastCharacter else {
-                            return true // Skip the check
-                        }
-                        
-                        return !lastCharacter.isNewline
-                    }) {
-                        font = attributedString.attribute(
-                            .font,
-                            at: range.lowerBound,
-                            effectiveRange: nil
-                        ) as? PlatformFont
-                    }
-                }
-                
-                size = CGSize(
-                    width: state.size.width,
-                    height: state.size.height * (1 - _descentFactor(font))
-                )
+        guard state.size != .zero else { return .zero }
+        
+        let font = _retriveFontFromSurroundingText(
+            textContainer: textContainer,
+            charIndex: charIndex
+        )
+        
+        var origin = CGPoint.zero
+        if let font {
+            origin.y = _descentFactor(font) * state.size.height * -1
+            ascender = state.size.height + origin.y
+        }
+        return CGRect(
+            origin: origin,
+            size: state.size
+        )
+    }
+    
+    private func _retriveFontFromSurroundingText(
+        textContainer: NSTextContainer?,
+        charIndex: Int
+    ) -> PlatformFont? {
+        let textContentManager = textContainer?
+            .textLayoutManager?
+            .textContentManager as? NSTextContentStorage
+        let attributedString = textContentManager?.attributedString
+        guard let attributedString else { return nil }
+        
+        let effectiveRange = 0 ..< attributedString.length
+        
+        let ranges = [
+            (charIndex - 1 ..< charIndex), // previous character
+            (charIndex + 1 ..< charIndex + 2) // next character
+        ]
+        if let range = ranges.first(where: {
+            guard effectiveRange.contains($0) else { return false }
+            
+            let lastCharacter = attributedString
+                .attributedSubstring(from: NSRange($0))
+                .string.last
+            guard let lastCharacter else {
+                return false
             }
-        } else {
-            size = state.size
+            
+            return !lastCharacter.isNewline
+        }) {
+            return attributedString.attribute(
+                .font,
+                at: range.lowerBound,
+                effectiveRange: nil
+            ) as? PlatformFont
         }
         
-        return CGRect(origin: .zero, size: size)
+        return nil
     }
     
     public override func image(
