@@ -7,12 +7,13 @@
 
 import SwiftUI
 
+/// A custom result builder that constructs ``TextContent`` from a closure.
 @resultBuilder
 public enum TextContentBuilder {
     public static func buildBlock() -> TextContent {
         TextContent()
     }
-    
+
     public static func buildBlock(_ components: TextContent...) -> TextContent {
         components.reduce(TextContent(), +)
     }
@@ -57,6 +58,10 @@ public enum TextContentBuilder {
         TextContent(.view(InlineHostingAttachment(expression, replacement: nil)))
     }
     
+    public static func buildExpression(_ expression: some StringProtocol) -> TextContent {
+        buildExpression(String(expression))
+    }
+
     public static func buildExpression(_ expression: Text) -> TextContent {
         if let attributedString = expression._attributedString {
             return TextContent(.attributedString(attributedString))

@@ -7,15 +7,57 @@
 
 import SwiftUI
 
+/// A rich text container that renders plain strings, attributed strings, and
+/// inline SwiftUI views together while offers the same text selection experience.
+///
+/// You declare the text content by using:
+/// - a type that conforms to `StringProtocol` for plain-text fragment
+///     - `String`
+///     - `Substring`
+///     - etc.
+/// - `Foundation.AttributedString` for attributed string (or rich text) fragment
+/// - `SwiftUI.View` for platform view fragment (without replacement text)
+/// - ``InlineView`` for platform view fragment (with optional replacement)
+///     - This would have the same effect as previous one, if you choose not providing a replacement text.
+///
+/// Here is a simple example of ``TextView``:
+///
+/// ```swift
+/// TextView {
+///     "Tap the "
+///     InlineView("button") {
+///         Button("button") {
+///             print("Button Clicked")
+///         }
+///         .id("button")
+///     }
+///     " to continue."
+/// }
+/// ```
+///
+/// By describing the ``TextContent``, you will be able to embed native view while still getting the text selection experience.
+///
+/// When you select the button and copy it, you will get the replacement text -- here, "button" -- if you specified one.
+///
+/// ### Additional notes on custom view embedding
+///
+/// Providing an explicit ``id(_:)`` for each view is recommended, as it helps reduce unnecessary re-layouts and would help improve performance.
+///
+/// Plus, if your view owns a state (e.g. you're using `@State`, `@StateObject`, etc. within the view), the identity is also used to preserve the state of a view.
+///
+/// For more information, check out ``InlineHostingAttachment/id``
 public struct TextView: View {
     private var content: TextContent
     @State private var attachments: [InlineHostingAttachment] = []
     @Environment(\.fontResolutionContext) private var fontResolutionContext
     
+    /// Creates a ``TextView`` with the given ``TextContent``.
+    ///
+    /// - Parameter content: A ``TextContent`` that stores all fragments of the text.
     public init(@TextContentBuilder content: () -> TextContent) {
         self.content = content()
     }
-
+    
     public var body: some View {
         _textView
             .task(id: content) {

@@ -9,16 +9,18 @@
 import SwiftUI
 
 extension SwiftUI.Text {
+    /// Returns the underlying attributed string used to render the SwiftUI text when it is available.
     public var _attributedString: AttributedString? {
         let mirror = Mirror(reflecting: self)
-        
+
         if let attrStr = mirror.descendant("storage", "anyTextStorage", "str") as? AttributedString {
             return attrStr
         }
-        
+
         return nil
     }
-    
+
+    /// Gets the raw text from SwiftUI text, or resolve it into a plain text.
     public var _rawOrResolvedString: String {
         let mirror = Mirror(reflecting: self)
         

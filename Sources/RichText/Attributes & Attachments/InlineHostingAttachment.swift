@@ -7,11 +7,45 @@
 
 import SwiftUI
 import ViewIntrospector
-import UniformTypeIdentifiers
 
+/// An attachment that hosts an inline SwiftUI view with other text fragments.
+///
+/// This serves as placeholder attachment to allow TextKit engine to correctly layout suroundding text.
+/// When the underlying platform text view calls its layout function, it will report the origin of all attachments back to SwiftUI view via `Observation` framework.
 public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unchecked Sendable {
+    /// The SwiftUI view hosted by the attachment.
     public var view: AnyView
+    /// The identity of the view.
+    ///
+    /// Typically, if your view has any state or is initialized with random stuffs,
+    /// you will have to explicitly specify an identity to your view hierarchy.
+    ///
+    /// ```swift
+    /// TextView {
+    ///     RandomColorView()
+    ///         .id("color")
+    /// }
+    /// ```
+    ///
+    /// By doing that, you will also get better performance since it helps reduce unnecessary re-layouts under the hood,
+    /// so **it's recommended to provide explicit id for every single view!**
+    ///
+    /// If you don't provide an id explicitly, a random UUID will be created.
+    /// Whenever ``TextView`` refreshes, your view will be recreated and refreshed (all states will be reset also).
     public var id: AnyHashable
+    /// The replacement text of this view for both copy/paste and menu actions.
+    ///
+    /// For example, if you copy all text from this ``TextView``, you will get "Hello **World**" (or plain text "Hello World" based on the paste location.)
+    ///
+    /// ```swift
+    /// TextView {
+    ///     "Hello"
+    ///     InlineView("**World**") {
+    ///         GlobeGlyph()
+    ///             .id("globe-glyph")
+    ///     }
+    /// }
+    /// ```
     public var replacement: AttributedString?
     
     var state: State
@@ -33,9 +67,9 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
             self.origin = origin
         }
     }
-    
+
     @MainActor
-    public init<Content: View>(_ content: Content, replacement: AttributedString?) {
+    init<Content: View>(_ content: Content, replacement: AttributedString?) {
         self.view = AnyView(content)
         self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
 
