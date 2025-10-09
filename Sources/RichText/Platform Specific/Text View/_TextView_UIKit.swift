@@ -28,6 +28,10 @@ struct _TextView_UIKit: UIViewRepresentable {
                 .ctFont as UIFont
         }
         
+        textView.textContainer.lineFragmentPadding = .zero
+        textView.textContainerInset = .zero
+        textView.contentInset = .zero
+        
         return textView
     }
     

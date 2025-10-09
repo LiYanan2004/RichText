@@ -28,12 +28,14 @@ struct _TextView_AppKit: NSViewRepresentable {
         }
         
         // Sizing
-        textView.autoresizingMask = [.width]
+        textView.textContainerInset = .zero
+        textView.setContentHuggingPriority(.required, for: .vertical)
         textView.isVerticallyResizable = false
         textView.isHorizontallyResizable = false
         if let textContainer = textView.textContainer {
             textContainer.widthTracksTextView = true
-            textContainer.heightTracksTextView = true
+            textContainer.heightTracksTextView = false
+            textContainer.lineFragmentPadding = .zero
         }
         
         return textView
