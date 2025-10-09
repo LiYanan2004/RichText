@@ -2,12 +2,13 @@
 
 # RichText
 
-A Supplementary TextView for SwiftUI that provides better text selection experience, as well as enabling native view embedding using declarative syntax.
+A supplementary TextView for SwiftUI that provides better text selection experience, as well as enabling native view embedding using declarative syntax.
 
-Powered by **TextKit 2**. Requires Xcode 26 or later to build.
+Powered by **TextKit 2**.
 
-## Requirement
+## Requirements
 
+- Xcode 26.0+
 - iOS 17.0+
 - macOS 14.0+
 

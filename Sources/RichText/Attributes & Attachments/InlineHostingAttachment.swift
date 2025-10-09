@@ -11,6 +11,7 @@ import ViewIntrospector
 /// An attachment that hosts an inline SwiftUI view with other text fragments.
 ///
 /// This serves as placeholder attachment to allow TextKit engine to correctly layout suroundding text.
+///
 /// When the underlying platform text view calls its layout function, it will report the origin of all attachments back to SwiftUI view via `Observation` framework.
 public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unchecked Sendable {
     /// The SwiftUI view hosted by the attachment.
