@@ -36,7 +36,7 @@ package enum ViewIdentity {
             return directID
         }
         
-        // FIXME: Accessing State's value outside of being installed on a View. This will result in a constant Binding of the initial value and will not update.
+        // TODO: Accessing State's value outside of being installed on a View. This will result in a constant Binding of the initial value and will not update.
 //            if Content.Body.self != Never.self,
 //               let wrappedID = explicit(root.body) {
 //                return wrappedID

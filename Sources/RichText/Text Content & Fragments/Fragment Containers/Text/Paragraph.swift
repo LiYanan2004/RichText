@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// FIXME: Currently just add a line break at the end, not a good one for public usage.
+// TODO: Currently just add a line break at the end, not a good one for public usage.
 /// A text paragraph.
 ///
 /// Use ``Paragraph`` to separate sections in a ``TextView``.

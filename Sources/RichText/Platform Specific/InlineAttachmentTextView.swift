@@ -18,7 +18,7 @@ final class InlineAttachmentTextView: PlatformTextView {
     
     override var intrinsicContentSize: CGSize {
         #if canImport(AppKit)
-        // FIXME: Is there any efficient way to calculate the height of the view?
+        // TODO: Is there any efficient way to calculate the height of the view?
         CGSize(width: PlatformView.noIntrinsicMetric, height: _measuredContentHeight)
         #else
         CGSize(width: PlatformView.noIntrinsicMetric, height: PlatformView.noIntrinsicMetric)
