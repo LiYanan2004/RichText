@@ -12,6 +12,12 @@ Powered by **TextKit 2**.
 - iOS 17.0+
 - macOS 14.0+
 
+## Documentation
+
+You can view documentation on:
+- [main @ Swift Package Index](https://swiftpackageindex.com/LiYanan2004/RichText/main/documentation/richtext/)
+- [main @ GitHub Pages](https://liyanan2004.github.io/RichText/documentation/richtext/)
+
 ## Getting Started
 
 Add **RichText** as a dependency in your Swift Package Manager manifest.

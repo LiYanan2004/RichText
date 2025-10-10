@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// Use this when you need to provide text replacement.
 ///
-/// In the following example, when user copies the whole text, they will get "Hello **World**
+/// In the following example, when user copies the whole text, they will get "Hello **World**"
 /// (or plain text "Hello World" depends on the paste location)
 ///
 /// ```swift
