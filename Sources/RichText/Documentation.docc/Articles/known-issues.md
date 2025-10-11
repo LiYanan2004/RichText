@@ -9,6 +9,7 @@ Get to know the list of known issues and possible workaround.
 ### TextView
 
 - On macOS, TextView always takes up the maximum available space horizontally
+- When using `AttributedString` with SwiftUI attributes, most of the attribute will be discarded.
 
 ### View Modifiers
 
