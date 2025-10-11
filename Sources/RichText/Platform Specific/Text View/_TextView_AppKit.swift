@@ -42,13 +42,10 @@ struct _TextView_AppKit: NSViewRepresentable {
     }
     
     func updateNSView(_ textView: InlineAttachmentTextView, context: Context) {
-        if let textContainer = textView.textContainer {
-            TextContainerConfigurator.updateTextContainer(
-                textContainer,
-                in: context
-            )
-        }
-        
+        TextAttributeConverter.mergeEnvironmentValueIntoTextView(
+            textView,
+            context: context
+        )
         textView._attributedString = attributedString
     }
     
