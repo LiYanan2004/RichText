@@ -36,7 +36,10 @@ struct _TextView_UIKit: UIViewRepresentable {
     }
     
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
-        configureTextContainer(textView.textContainer, context: context)
+        TextContainerConfigurator.updateTextContainer(
+            textView.textContainer,
+            in: context
+        )
         textView._attributedString = attributedString
     }
     

@@ -43,19 +43,13 @@ struct _TextView_AppKit: NSViewRepresentable {
     
     func updateNSView(_ textView: InlineAttachmentTextView, context: Context) {
         if let textContainer = textView.textContainer {
-            configureTextContainer(textContainer, context: context)
+            TextContainerConfigurator.updateTextContainer(
+                textContainer,
+                in: context
+            )
         }
         
         textView._attributedString = attributedString
-    }
-    
-    private func configureTextContainer(
-        _ textContainer: NSTextContainer,
-        context: Context
-    ) {
-        if let lineLimit = context.environment.lineLimit {
-            textContainer.maximumNumberOfLines = lineLimit
-        }
     }
     
     final class Coordinator: NSObject, NSTextViewDelegate {
