@@ -46,6 +46,24 @@ import SwiftUI
 /// Plus, if your view owns a state (e.g. you're using `@State`, `@StateObject`, etc. within the view), the identity is also used to preserve the state of a view.
 ///
 /// For more information, check out ``InlineHostingAttachment/id``
+///
+/// ### SwiftUI View modifiers
+///
+/// Most of the text-styling view modifiers should work seamlessly with `TextView`.
+///
+/// Some text modifiers, for example: `baselineOffset(_:)`, `kerning(_:)`, `bold(_:)`, etc., are not available since SwiftUI does not expose environment values for those properties. For these use cases, use `AttributedString` instead.
+///
+/// ```swift
+/// TextView {
+///     "Hi there,"
+///     LineBreak()
+///     "RichText is a SwiftUI framework that provides better Text experience."
+/// }
+/// .font(.body)
+/// .lineSpacing(8)
+/// .lineLimit(2)
+/// .truncationMode(.tail)
+/// ```
 public struct TextView: View {
     private var content: TextContent
     @State private var attachments: [InlineHostingAttachment] = []
@@ -82,17 +100,9 @@ public struct TextView: View {
     
     private var _textView: some View {
         #if canImport(AppKit)
-        _TextView_AppKit(
-            attributedString: content.attributedString(
-                fontResolutionContext: fontResolutionContext
-            )
-        )
+        _TextView_AppKit(content: content)
         #elseif canImport(UIKit)
-        _TextView_UIKit(
-            attributedString: content.attributedString(
-                fontResolutionContext: fontResolutionContext
-            )
-        )
+        _TextView_UIKit(content: content)
         #else
         ContentUnavailableView(
             "Content Not Available",

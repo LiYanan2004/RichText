@@ -67,28 +67,23 @@ public struct TextContent: Hashable {
     /// On earlier systems, use `PlatformFont` rather than `SwiftUI.Font` when creating `AttributedString`
     /// since the text view is backed by platform view, `SwiftUI.Font` is not respected.
     ///
-    /// - Parameter fontResolutionContext: The SwiftUI font resolution context
-    ///   supplied by the environment.
+    /// - Parameter context: The context of the platform view representable that contains environment values.
     @MainActor
-    func attributedString(fontResolutionContext: Font.Context) -> AttributedString {
+    func attributedString<Representable: ViewRepresentable>(
+        context: RepresentableContext<Representable>
+    ) -> AttributedString {
         var attributedString = fragments.reduce(into: AttributedString()) { result, fragment in
             result += fragment.asAttributedString()
         }
         
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            for run in attributedString.runs {
-                if let swiftUIFont = run.swiftUI.font {
-                    let platformFont = swiftUIFont
-                        .resolve(in: fontResolutionContext)
-                        .ctFont as PlatformFont
-                    attributedString[run.range].setAttributes(
-                        AttributeContainer(
-                            [.font : platformFont]
-                        )
-                    )
-                }
-            }
-        }
+        attributedString = TextAttributeConverter.mergingEnvironmentValuesIntoAttributedString(
+            attributedString,
+            context: context
+        )
+        attributedString = TextAttributeConverter.convertingAndMergingSwiftUIAttributesIntoAttributedString(
+            attributedString,
+            context: context
+        )
         
         return attributedString
     }

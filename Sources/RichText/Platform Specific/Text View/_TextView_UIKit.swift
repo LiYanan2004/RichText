@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct _TextView_UIKit: UIViewRepresentable {
-    var attributedString: AttributedString
+    var content: TextContent
     
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
@@ -22,12 +22,6 @@ struct _TextView_UIKit: UIViewRepresentable {
         textView.isSelectable = true
         textView.isScrollEnabled = false
         
-        if #available(iOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            textView.font = Font.default
-                .resolve(in: context.environment.fontResolutionContext)
-                .ctFont as UIFont
-        }
-        
         textView.textContainer.lineFragmentPadding = .zero
         textView.textContainerInset = .zero
         textView.contentInset = .zero
@@ -36,8 +30,11 @@ struct _TextView_UIKit: UIViewRepresentable {
     }
     
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
-        configureTextContainer(textView.textContainer, context: context)
-        textView._attributedString = attributedString
+        TextAttributeConverter.mergeEnvironmentValueIntoTextView(
+            textView,
+            context: context
+        )
+        textView._attributedString = content.attributedString(context: context)
     }
     
     // For UITextView, it comes with a UIScrollView
@@ -58,15 +55,6 @@ struct _TextView_UIKit: UIViewRepresentable {
                 )
             )
         )
-    }
-    
-    private func configureTextContainer(
-        _ textContainer: NSTextContainer,
-        context: Context
-    ) {
-        if let lineLimit = context.environment.lineLimit {
-            textContainer.maximumNumberOfLines = lineLimit
-        }
     }
     
     final class Coordinator: NSObject, UITextViewDelegate {
