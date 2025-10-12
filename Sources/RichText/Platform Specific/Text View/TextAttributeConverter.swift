@@ -44,7 +44,10 @@ enum TextAttributeConverter {
             paragraphStyle.lineSpacing = context.environment.lineSpacing
             paragraphStyle.allowsDefaultTighteningForTruncation = context.environment.allowsTightening
             paragraphStyle.baseWritingDirection = NSWritingDirection(context.environment.layoutDirection)
-            paragraphStyle.lineBreakMode = NSLineBreakMode(context.environment.truncationMode)
+            paragraphStyle.lineBreakMode = NSLineBreakMode(
+                context.environment.truncationMode,
+                lineLimit: context.environment.lineLimit
+            )
             convertedAttributes[.paragraphStyle] = paragraphStyle
         
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
@@ -119,15 +122,25 @@ enum TextAttributeConverter {
         _ textContainer: NSTextContainer,
         context: RepresentableContext<Representable>
     ) {
-        textContainer.maximumNumberOfLines = context.environment.lineLimit ?? 0
-        textContainer.lineBreakMode = NSLineBreakMode(context.environment.truncationMode)
+        let lineLimit = context.environment.lineLimit ?? 0
+        textContainer.maximumNumberOfLines = lineLimit
+        textContainer.lineBreakMode = NSLineBreakMode(
+            context.environment.truncationMode,
+            lineLimit: lineLimit
+        )
     }
 }
 
 // MARK: - Auxiliary
 
 fileprivate extension NSLineBreakMode {
-    init(_ truncationMode: Text.TruncationMode) {
+    init(_ truncationMode: Text.TruncationMode, lineLimit: Int?) {
+        let lineLimit = lineLimit ?? 0
+        guard lineLimit > 0 else {
+            self = .byWordWrapping
+            return
+        }
+        
         switch truncationMode {
             case .head:
                 self = .byTruncatingHead
