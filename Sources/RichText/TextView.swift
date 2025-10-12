@@ -82,17 +82,9 @@ public struct TextView: View {
     
     private var _textView: some View {
         #if canImport(AppKit)
-        _TextView_AppKit(
-            attributedString: content.attributedString(
-                fontResolutionContext: fontResolutionContext
-            )
-        )
+        _TextView_AppKit(content: content)
         #elseif canImport(UIKit)
-        _TextView_UIKit(
-            attributedString: content.attributedString(
-                fontResolutionContext: fontResolutionContext
-            )
-        )
+        _TextView_UIKit(content: content)
         #else
         ContentUnavailableView(
             "Content Not Available",

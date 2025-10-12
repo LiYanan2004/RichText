@@ -17,26 +17,52 @@ typealias RepresentableContext = UIViewRepresentableContext
 
 @MainActor
 enum TextAttributeConverter {
+    static func mergingEnvironmentValuesIntoAttributedString<Representable: ViewRepresentable>(
+        _ attributedString: AttributedString,
+        context: RepresentableContext<Representable>
+    ) -> AttributedString {
+        var attributedString = attributedString
+        
+        for run in attributedString.runs {
+            var attributes = run.attributes
+            
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+                let platformFont = (context.environment.font ?? .default)
+                    .resolve(in: context.environment.fontResolutionContext)
+                    .ctFont as PlatformFont
+                attributes.merge(
+                    AttributeContainer([.font : platformFont])
+                )
+            }
+            
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.alignment = NSTextAlignment(
+                context.environment.multilineTextAlignment,
+                layoutDirection: context.environment.layoutDirection
+            )
+            paragraphStyle.lineSpacing = context.environment.lineSpacing
+            paragraphStyle.allowsDefaultTighteningForTruncation = context.environment.allowsTightening
+            paragraphStyle.baseWritingDirection = NSWritingDirection(context.environment.layoutDirection)
+            paragraphStyle.lineBreakMode = NSLineBreakMode(context.environment.truncationMode)
+            attributes.merge(
+                AttributeContainer([.paragraphStyle : paragraphStyle])
+            )
+            
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
+               let _ = context.environment.lineHeight {
+                // TODO: Line Height for OS 26+
+            }
+            
+            attributedString[run.range].setAttributes(attributes)
+        }
+        
+        return attributedString
+    }
+    
     static func mergeEnvironmentValueIntoTextView<Representable: ViewRepresentable>(
         _ textView: PlatformTextView,
         context: RepresentableContext<Representable>
     ) {
-        #if canImport(AppKit)
-        textView.baseWritingDirection = context.environment.layoutDirection.direction
-        textView.alignment = NSTextAlignment(
-            context.environment.multilineTextAlignment,
-            layoutDirection: context.environment.layoutDirection
-        )
-        textView.isAutomaticSpellingCorrectionEnabled = !context.environment.autocorrectionDisabled
-        #elseif canImport(UIKit)
-        textView.semanticContentAttribute = context.environment.layoutDirection.direction
-        textView.textAlignment = NSTextAlignment(
-            context.environment.multilineTextAlignment,
-            layoutDirection: context.environment.layoutDirection
-        )
-        textView.autocorrectionType = context.environment.autocorrectionDisabled ? .no : .default
-        #endif
-        
         let textContainer: NSTextContainer? = textView.textContainer
         if let textContainer {
             updateTextContainer(textContainer, context: context)
@@ -48,7 +74,7 @@ enum TextAttributeConverter {
         context: RepresentableContext<Representable>
     ) {
         textContainer.maximumNumberOfLines = context.environment.lineLimit ?? 0
-        textContainer.lineBreakMode = .init(context.environment.truncationMode)
+        textContainer.lineBreakMode = NSLineBreakMode(context.environment.truncationMode)
     }
 }
 
@@ -84,28 +110,15 @@ fileprivate extension NSTextAlignment {
     }
 }
 
-fileprivate extension LayoutDirection {
-    #if canImport(AppKit)
-    var direction: NSWritingDirection {
-        switch self {
+fileprivate extension NSWritingDirection {
+    init(_ layoutDirection: LayoutDirection) {
+        switch layoutDirection {
             case .leftToRight:
-                return .leftToRight
+                self = .leftToRight
             case .rightToLeft:
-                return .rightToLeft
+                self = .rightToLeft
             @unknown default:
-                return .natural
+                self = .natural
         }
     }
-    #elseif canImport(UIKit)
-    var direction: UISemanticContentAttribute {
-        switch self {
-            case .leftToRight:
-                return .forceLeftToRight
-            case .rightToLeft:
-                return .forceRightToLeft
-            @unknown default:
-                return .unspecified
-        }
-    }
-    #endif
 }

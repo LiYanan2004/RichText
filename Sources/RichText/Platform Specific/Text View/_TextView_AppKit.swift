@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct _TextView_AppKit: NSViewRepresentable {
-    var attributedString: AttributedString
+    var content: TextContent
     
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
@@ -21,11 +21,6 @@ struct _TextView_AppKit: NSViewRepresentable {
         // Behavior
         textView.isEditable = false
         textView.usesAdaptiveColorMappingForDarkAppearance = true
-        if #available(macOS 26.0, *) {
-            textView.font = Font.default
-                .resolve(in: context.environment.fontResolutionContext)
-                .ctFont as NSFont
-        }
         
         // Sizing
         textView.textContainerInset = .zero
@@ -46,7 +41,7 @@ struct _TextView_AppKit: NSViewRepresentable {
             textView,
             context: context
         )
-        textView._attributedString = attributedString
+        textView._attributedString = content.attributedString(context: context)
     }
     
     final class Coordinator: NSObject, NSTextViewDelegate {
