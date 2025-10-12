@@ -87,21 +87,17 @@ public struct TextView: View {
     public var body: some View {
         _textView
             .onChange(of: rawContent, initial: true) {
-                let existingAttachmentByID = Dictionary(
-                    uniqueKeysWithValues: self.attachments.map { ($0.id, $0) }
-                )
-                let textContent = TextContent(
-                    rawContent.fragments.map { fragment in
-                        switch fragment {
-                            case .view(let attachment):
-                                return TextContent.Fragment.view(
-                                    existingAttachmentByID[attachment.id] ?? attachment
-                                )
-                            default:
-                                return fragment
-                        }
+                var existingAttachmentsByID: [InlineHostingAttachment.ID : InlineHostingAttachment] = [:]
+                for attachment in self.attachments {
+                    existingAttachmentsByID[attachment.id] = attachment
+                }
+                let textContent = rawContent
+                // Reuse existing attachment states.
+                for case let .view(attachment) in textContent.fragments {
+                    if let existingState = existingAttachmentsByID[attachment.id]?.state {
+                        attachment.state = existingState
                     }
-                )
+                }
                 
                 self.content = textContent
                 self.attachments = textContent.attachments
