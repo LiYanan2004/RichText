@@ -12,7 +12,6 @@ RichText provides a supplementary ``TextView``, powered by **TextKit 2**, for Sw
 
 - ``TextView``
 - <doc:better-text-selection-experience>
-- <doc:known-issues>
 
 ### Text Content
 

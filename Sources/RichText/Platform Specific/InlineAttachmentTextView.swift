@@ -118,6 +118,7 @@ final class InlineAttachmentTextView: PlatformTextView {
             
             _textStorage.setAttributedString(attributed)
         } catch {
+            // TODO: use logger.
             print("Failed to build attributed string: \(error)")
         }
     }
