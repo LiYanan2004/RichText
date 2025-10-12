@@ -10,9 +10,11 @@ import SwiftUI
 #if canImport(AppKit)
 typealias ViewRepresentable = NSViewRepresentable
 typealias RepresentableContext = NSViewRepresentableContext
+typealias PlatformColor = NSColor
 #elseif canImport(UIKit)
 typealias ViewRepresentable = UIViewRepresentable
 typealias RepresentableContext = UIViewRepresentableContext
+typealias PlatformColor = UIColor
 #endif
 
 @MainActor
@@ -25,14 +27,13 @@ enum TextAttributeConverter {
         
         for run in attributedString.runs {
             var attributes = run.attributes
+            var convertedAttributes: [NSAttributedString.Key : Any] = [:]
             
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
                 let platformFont = (context.environment.font ?? .default)
                     .resolve(in: context.environment.fontResolutionContext)
                     .ctFont as PlatformFont
-                attributes.merge(
-                    AttributeContainer([.font : platformFont])
-                )
+                convertedAttributes[.font] = platformFont
             }
             
             let paragraphStyle = NSMutableParagraphStyle()
@@ -44,15 +45,60 @@ enum TextAttributeConverter {
             paragraphStyle.allowsDefaultTighteningForTruncation = context.environment.allowsTightening
             paragraphStyle.baseWritingDirection = NSWritingDirection(context.environment.layoutDirection)
             paragraphStyle.lineBreakMode = NSLineBreakMode(context.environment.truncationMode)
-            attributes.merge(
-                AttributeContainer([.paragraphStyle : paragraphStyle])
-            )
-            
+            convertedAttributes[.paragraphStyle] = paragraphStyle
+        
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
                let _ = context.environment.lineHeight {
                 // TODO: Line Height for OS 26+
             }
             
+            attributes.merge(AttributeContainer(convertedAttributes))
+            attributedString[run.range].setAttributes(attributes)
+        }
+        
+        return attributedString
+    }
+    
+    static func convertingAndMergingSwiftUIAttributesIntoAttributedString<Representable: ViewRepresentable>(
+        _ attributedString: AttributedString,
+        context: RepresentableContext<Representable>
+    ) -> AttributedString {
+        var attributedString = attributedString
+        
+        for run in attributedString.runs {
+            var attributes = run.attributes
+            let swiftUIAttributes = attributes.swiftUI
+            var convertedAttributes: [NSAttributedString.Key : Any] = [:]
+            
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
+               let font = swiftUIAttributes.font {
+                let platformFont = font
+                    .resolve(in: context.environment.fontResolutionContext)
+                    .ctFont as PlatformFont
+                convertedAttributes[.font] = platformFont
+            }
+            
+            if let underlineStyle = swiftUIAttributes.underlineStyle {
+                convertedAttributes[.underlineStyle] = NSNumber(
+                    value: NSUnderlineStyle(underlineStyle).rawValue
+                )
+                convertedAttributes[.underlineColor] = underlineStyle.color.map(PlatformColor.init(_:))
+            }
+            if let strikethroughStyle = swiftUIAttributes.strikethroughStyle {
+                convertedAttributes[.strikethroughStyle] = NSNumber(
+                    value: NSUnderlineStyle(strikethroughStyle).rawValue
+                )
+                convertedAttributes[.strikethroughColor] = strikethroughStyle.color.map(PlatformColor.init(_:))
+            }
+            convertedAttributes[.foregroundColor] = swiftUIAttributes.foregroundColor.map(PlatformColor.init(_:))
+            convertedAttributes[.backgroundColor] = swiftUIAttributes.backgroundColor.map(PlatformColor.init(_:))
+            convertedAttributes[.kern] = swiftUIAttributes.kern
+            convertedAttributes[.tracking] = swiftUIAttributes.tracking
+            convertedAttributes[.baselineOffset] = swiftUIAttributes.baselineOffset
+            
+            attributes.merge(
+                AttributeContainer(convertedAttributes)
+            )
             attributedString[run.range].setAttributes(attributes)
         }
         
@@ -92,6 +138,12 @@ fileprivate extension NSLineBreakMode {
             @unknown default:
                 self = .byTruncatingTail
         }
+    }
+}
+
+fileprivate extension Text.LineStyle {
+    var color: Color? {
+        return Mirror(reflecting: self).descendant("color") as? Color
     }
 }
 

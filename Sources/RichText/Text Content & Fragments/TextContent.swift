@@ -72,13 +72,19 @@ public struct TextContent: Hashable {
     func attributedString<Representable: ViewRepresentable>(
         context: RepresentableContext<Representable>
     ) -> AttributedString {
-        let attributedString = fragments.reduce(into: AttributedString()) { result, fragment in
+        var attributedString = fragments.reduce(into: AttributedString()) { result, fragment in
             result += fragment.asAttributedString()
         }
         
-        return TextAttributeConverter.mergingEnvironmentValuesIntoAttributedString(
+        attributedString = TextAttributeConverter.mergingEnvironmentValuesIntoAttributedString(
             attributedString,
             context: context
         )
+        attributedString = TextAttributeConverter.convertingAndMergingSwiftUIAttributesIntoAttributedString(
+            attributedString,
+            context: context
+        )
+        
+        return attributedString
     }
 }
