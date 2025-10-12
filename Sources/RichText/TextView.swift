@@ -65,7 +65,15 @@ import SwiftUI
 /// .truncationMode(.tail)
 /// ```
 public struct TextView: View {
-    private var content: TextContent
+    /// A raw text content directly from the view's input
+    ///
+    /// To keep the view layout consistent, we merge view attachments, since the result builder always creates new ones
+    /// which would otherwise reset the text engine’s layout and lead to incorrect layout results.
+    ///
+    /// To get merged result, use `content`.
+    private var rawContent: TextContent
+    @State private var content = TextContent()
+    
     @State private var attachments: [InlineHostingAttachment] = []
     @Environment(\.fontResolutionContext) private var fontResolutionContext
     
@@ -73,13 +81,30 @@ public struct TextView: View {
     ///
     /// - Parameter content: A ``TextContent`` that stores all fragments of the text.
     public init(@TextContentBuilder content: () -> TextContent) {
-        self.content = content()
+        self.rawContent = content()
     }
     
     public var body: some View {
         _textView
-            .task(id: content) {
-                self.attachments = content.attachments
+            .onChange(of: rawContent, initial: true) {
+                let existingAttachmentByID = Dictionary(
+                    uniqueKeysWithValues: self.attachments.map { ($0.id, $0) }
+                )
+                let textContent = TextContent(
+                    rawContent.fragments.map { fragment in
+                        switch fragment {
+                            case .view(let attachment):
+                                return TextContent.Fragment.view(
+                                    existingAttachmentByID[attachment.id] ?? attachment
+                                )
+                            default:
+                                return fragment
+                        }
+                    }
+                )
+                
+                self.content = textContent
+                self.attachments = textContent.attachments
             }
             .overlay(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) {
