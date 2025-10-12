@@ -112,6 +112,17 @@ enum TextAttributeConverter {
         _ textView: PlatformTextView,
         context: RepresentableContext<Representable>
     ) {
+        #if canImport(AppKit)
+        textView.baseWritingDirection = NSWritingDirection(context.environment.layoutDirection)
+        textView.alignment = NSTextAlignment(
+            context.environment.multilineTextAlignment,
+            layoutDirection: context.environment.layoutDirection
+        )
+        textView.isAutomaticSpellingCorrectionEnabled = !context.environment.autocorrectionDisabled
+        #elseif canImport(UIKit)
+        /* UITextView does not respect to any properties set to that view since its backed storage is an `AttributedString` */
+        #endif
+        
         let textContainer: NSTextContainer? = textView.textContainer
         if let textContainer {
             updateTextContainer(textContainer, context: context)
