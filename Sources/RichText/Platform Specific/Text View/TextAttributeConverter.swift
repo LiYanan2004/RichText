@@ -48,12 +48,16 @@ enum TextAttributeConverter {
                 context.environment.truncationMode,
                 lineLimit: context.environment.lineLimit
             )
-            convertedAttributes[.paragraphStyle] = paragraphStyle
-        
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
-               let _ = context.environment.lineHeight {
-                // TODO: Line Height for OS 26+
+               let lineHeight = context.environment.lineHeight {
+                let (min, max, multiple) = lineHeight._lineSetting(
+                    font: convertedAttributes[.font] as? PlatformFont
+                )
+                paragraphStyle.minimumLineHeight = min
+                paragraphStyle.maximumLineHeight = max
+                paragraphStyle.lineHeightMultiple = multiple
             }
+            convertedAttributes[.paragraphStyle] = paragraphStyle
             
             attributes.merge(AttributeContainer(convertedAttributes))
             attributedString[run.range].setAttributes(attributes)
@@ -98,6 +102,20 @@ enum TextAttributeConverter {
             convertedAttributes[.kern] = swiftUIAttributes.kern
             convertedAttributes[.tracking] = swiftUIAttributes.tracking
             convertedAttributes[.baselineOffset] = swiftUIAttributes.baselineOffset
+            
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
+               let lineHeight = swiftUIAttributes.lineHeight {
+                let paragraphStyle = (attributes.paragraphStyle as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+                
+                let (min, max, multiple) = lineHeight._lineSetting(
+                    font: convertedAttributes[.font] as? PlatformFont
+                )
+                paragraphStyle.minimumLineHeight = min
+                paragraphStyle.maximumLineHeight = max
+                paragraphStyle.lineHeightMultiple = multiple
+                
+                convertedAttributes[.paragraphStyle] = paragraphStyle
+            }
             
             attributes.merge(
                 AttributeContainer(convertedAttributes)
@@ -195,6 +213,58 @@ fileprivate extension NSWritingDirection {
                 self = .rightToLeft
             @unknown default:
                 self = .natural
+        }
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *)
+fileprivate extension AttributedString.LineHeight {
+    func _lineSetting(font: PlatformFont?) -> (min: CGFloat, max: CGFloat, multiple: CGFloat) {
+        let decoded = try? JSONDecoder().decode(
+            _LineHeight.self,
+            from: JSONEncoder().encode(self)
+        )
+        guard let decoded else { return (.zero, .zero, .zero) }
+        
+        var min: CGFloat = 0
+        var max: CGFloat = 0
+        var multiple: CGFloat = 0
+        if let multipleFactor = decoded.baselineInterval.multiple?.factor {
+            multiple = multipleFactor
+        } else if let exactHeight = decoded.baselineInterval.exact?.points {
+            min = exactHeight
+            max = exactHeight
+        } else if let increase = decoded.baselineInterval.leading?.increase, let font {
+            let base = font.pointSize
+            min = base + increase
+            max = base + increase
+        }
+        
+        return (min, max, multiple)
+    }
+    
+    struct _LineHeight: Decodable {
+        let baselineInterval: BaselineInterval
+        
+        struct BaselineInterval: Decodable {
+            let multiple: Multiple?
+            let variable: Variable?
+            let exact: Exact?
+            let leading: Leading?
+            
+            struct Multiple: Decodable {
+                let factor: Double
+            }
+            
+            struct Exact: Decodable {
+                let points: Double
+            }
+            
+            struct Variable: Decodable { }
+            
+            struct Leading: Decodable {
+                let increase: Double
+            }
         }
     }
 }
