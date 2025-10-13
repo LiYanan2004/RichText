@@ -105,7 +105,7 @@ enum TextAttributeConverter {
             
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
                let lineHeight = swiftUIAttributes.lineHeight {
-                let paragraphStyle: NSMutableParagraphStyle = (convertedAttributes[.paragraphStyle] as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
+                let paragraphStyle = (attributes.paragraphStyle as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
                 
                 let (min, max, multiple) = lineHeight._lineSetting(
                     font: convertedAttributes[.font] as? PlatformFont
