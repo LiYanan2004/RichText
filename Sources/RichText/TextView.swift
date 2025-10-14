@@ -161,14 +161,16 @@ extension TextView {
         comment: StaticString? = nil
     ) {
         let localized = String(
-            localized: LocalizedStringResource(
-                String.LocalizationValue(
-                    key._key ?? ""
-                ),
-                table: tableName,
-                bundle: bundle ?? .main,
-                comment: comment
-            )
+            localized: String.LocalizationValue(
+                ResolvedLocalizedStringKey(key).localizedString(
+                    tableName: tableName,
+                    bundle: bundle,
+                    comment: comment
+                ) ?? ""
+            ),
+            table: tableName,
+            bundle: bundle ?? .main,
+            comment: comment
         )
         
         let fragement: TextContent.Fragment
