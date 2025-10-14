@@ -84,6 +84,58 @@ public struct TextView: View {
         self.rawContent = content()
     }
     
+    public var body: some View {
+        _textView
+            .onChange(of: rawContent, initial: true) {
+                var existingAttachmentsByID: [InlineHostingAttachment.ID : InlineHostingAttachment] = [:]
+                for attachment in self.attachments {
+                    existingAttachmentsByID[attachment.id] = attachment
+                }
+                let textContent = rawContent
+                // Reuse existing attachment states.
+                for case let .view(attachment) in textContent.fragments {
+                    if let existingState = existingAttachmentsByID[attachment.id]?.state {
+                        attachment.state = existingState
+                    }
+                }
+                
+                self.content = textContent
+                self.attachments = textContent.attachments
+            }
+            .overlay(alignment: .topLeading) {
+                ZStack(alignment: .topLeading) {
+                    ForEach(attachments) { attachment in
+                        attachment.view
+                            .onGeometryChange(for: CGSize.self, of: \.size) { size in
+                                attachment.state.size = size
+                            }
+                            .offset(
+                                x: attachment.state.origin?.x ?? 0,
+                                y: attachment.state.origin?.y ?? 0
+                            )
+                            .opacity(attachment.state.origin == nil ? 0 : 1)
+                    }
+                }
+            }
+    }
+    
+    private var _textView: some View {
+        #if canImport(AppKit)
+        _TextView_AppKit(content: content)
+        #elseif canImport(UIKit)
+        _TextView_UIKit(content: content)
+        #else
+        ContentUnavailableView(
+            "Content Not Available",
+            systemImage: "exclamationmark.triangle"
+        )
+        #endif
+    }
+}
+
+// MARK: - Initializers
+
+extension TextView {
     /// Creates an instance with the given localized content identified by a key.
     ///
     /// - parameters:
@@ -138,7 +190,7 @@ public struct TextView: View {
     
     /// Creates an instance with the given string literal without localization.
     ///
-    /// - parameter content: A string literial to display without localization.
+    /// - parameter content: A string literial to display, without localization.
     ///
     /// This initializer aligns with the `SwiftUI.Text(verbatim:)` initializer.
     ///
@@ -149,52 +201,36 @@ public struct TextView: View {
         self.rawContent = TextContent(.string(content))
     }
     
-    public var body: some View {
-        _textView
-            .onChange(of: rawContent, initial: true) {
-                var existingAttachmentsByID: [InlineHostingAttachment.ID : InlineHostingAttachment] = [:]
-                for attachment in self.attachments {
-                    existingAttachmentsByID[attachment.id] = attachment
-                }
-                let textContent = rawContent
-                // Reuse existing attachment states.
-                for case let .view(attachment) in textContent.fragments {
-                    if let existingState = existingAttachmentsByID[attachment.id]?.state {
-                        attachment.state = existingState
-                    }
-                }
-                
-                self.content = textContent
-                self.attachments = textContent.attachments
-            }
-            .overlay(alignment: .topLeading) {
-                ZStack(alignment: .topLeading) {
-                    ForEach(attachments) { attachment in
-                        attachment.view
-                            .onGeometryChange(for: CGSize.self, of: \.size) { size in
-                                attachment.state.size = size
-                            }
-                            .offset(
-                                x: attachment.state.origin?.x ?? 0,
-                                y: attachment.state.origin?.y ?? 0
-                            )
-                            .opacity(attachment.state.origin == nil ? 0 : 1)
-                    }
-                }
-            }
+    /// Creates an instance from a stored string without localization.
+    ///
+    /// - Parameter content: A string value that conforms to `StringProtocol`.
+    ///
+    /// This initializer accepts any string protocol type and displays its value as-is, without localization.
+    /// If you pass in a string literal, ``init(_:tableName:bundle:comment:)`` will be called instead of this one.
+    @_disfavoredOverload public init<S: StringProtocol>(_ content: S) {
+        self.init(verbatim: String(content))
     }
     
-    private var _textView: some View {
-        #if canImport(AppKit)
-        _TextView_AppKit(content: content)
-        #elseif canImport(UIKit)
-        _TextView_UIKit(content: content)
-        #else
-        ContentUnavailableView(
-            "Content Not Available",
-            systemImage: "exclamationmark.triangle"
-        )
-        #endif
+    /// Creates an instance with the given localized string resource, resolving it at runtime.
+    ///
+    /// - Parameter localizedStringResource: The localized string resource to display.
+    ///
+    /// If you pass in a string literal, ``init(_:tableName:bundle:comment:)`` will be called instead of this one.
+    @_disfavoredOverload public init(_ localizedStringResource: LocalizedStringResource) {
+        self.init(verbatim: String(localized: localizedStringResource))
+    }
+    
+    /// Creates an instance with the given `AttributedString`.
+    ///
+    /// - Parameter attributedString: The attributed string to display.
+    ///
+    /// For simple Markdown styled text, you can use ``init(_:tableName:bundle:comment:)``directly.
+    ///
+    /// > important:
+    /// >
+    /// > This initializer does NOT support embedded views. For mixed content (text and views), use ``init(content:)`` instead.
+    @_disfavoredOverload public init(_ attributedString: AttributedString) {
+        self.rawContent = TextContent(.attributedString(attributedString))
     }
 }
 
