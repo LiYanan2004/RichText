@@ -33,3 +33,14 @@ SwiftUI does offer `.textSelection(.enabled)` view modifier to enable text selec
         @Video(source: "textview-text-selection-on-ios.mp4", poster: "textview-text-selection-on-ios-poster.png")
     }
 }
+
+### Adopting Text View
+
+RichText offers convenience initializers for developers to instantly getting better selection experience by replacing `Text` with `TextView`:
+- ``TextView/init(_:tableName:bundle:comment:)``
+- ``TextView/init(verbatim:)``
+- ``TextView/init(_:)-(S)``
+- ``TextView/init(_:)-(AttributedString)``
+- ``TextView/init(_:)-(LocalizedStringResource)``
+
+> note: These initializers does not support view embeddings. If you want to embed a view, use ``TextView/init(content:)``
