@@ -1,6 +1,6 @@
 //
 //  ViewIdentity.swift
-//  ViewIntrospector
+//  Introspection
 //
 //  Created by Yanan Li on 2025/10/7.
 //

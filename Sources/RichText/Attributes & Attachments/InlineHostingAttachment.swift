@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import ViewIntrospector
+import Introspection
 
 /// An attachment that hosts an inline SwiftUI view with other text fragments.
 ///

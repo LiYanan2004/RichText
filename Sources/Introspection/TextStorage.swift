@@ -1,6 +1,6 @@
 //
 //  TextStorage.swift
-//  RichText
+//  Introspection
 //
 //  Modified by Yanan Li on 2025/10/7.
 //  Credits to: https://gist.github.com/davidbalbert/eef9c238531217a42b83d6903ef777dc
@@ -64,7 +64,7 @@ fileprivate extension FormatStyle {
 }
 
 extension LocalizedStringKey {
-    package var key: String? {
+    package var _key: String? {
         let mirror = Mirror(reflecting: self)
         guard let key = mirror.descendant("key") as? String else {
             return nil

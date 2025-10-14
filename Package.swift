@@ -20,11 +20,11 @@ let package = Package(
         .target(
             name: "RichText",
             dependencies: [
-                "ViewIntrospector"
+                "Introspection"
             ]
         ),
         .target(
-            name: "ViewIntrospector"
+            name: "Introspection"
         ),
     ]
 )

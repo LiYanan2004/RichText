@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Introspection
 
 /// A rich text container that renders plain strings, attributed strings, and
 /// inline SwiftUI views together while offers the same text selection experience.
@@ -162,7 +163,7 @@ extension TextView {
         let localized = String(
             localized: LocalizedStringResource(
                 String.LocalizationValue(
-                    key.key ?? ""
+                    key._key ?? ""
                 ),
                 table: tableName,
                 bundle: bundle ?? .main,
