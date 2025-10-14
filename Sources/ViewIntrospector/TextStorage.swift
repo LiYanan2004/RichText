@@ -63,8 +63,16 @@ fileprivate extension FormatStyle {
     }
 }
 
-fileprivate extension LocalizedStringKey {
-    var resolved: String? {
+extension LocalizedStringKey {
+    package var key: String? {
+        let mirror = Mirror(reflecting: self)
+        guard let key = mirror.descendant("key") as? String else {
+            return nil
+        }
+        return key
+    }
+    
+    package var resolved: String? {
         let mirror = Mirror(reflecting: self)
         guard let key = mirror.descendant("key") as? String else {
             return nil

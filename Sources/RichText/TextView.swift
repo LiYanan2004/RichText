@@ -77,11 +77,76 @@ public struct TextView: View {
     @State private var attachments: [InlineHostingAttachment] = []
     @Environment(\.fontResolutionContext) private var fontResolutionContext
     
-    /// Creates a ``TextView`` with the given ``TextContent``.
+    /// Creates an instance with the given closure to build text content.
     ///
     /// - Parameter content: A ``TextContent`` that stores all fragments of the text.
     public init(@TextContentBuilder content: () -> TextContent) {
         self.rawContent = content()
+    }
+    
+    /// Creates an instance with the given localized content identified by a key.
+    ///
+    /// - parameters:
+    ///     - key: The key for the localized string resource.
+    ///     - tableName: The name of the localization lookup table.
+    ///     - bundle: The bundle containing the localization resource.
+    ///     - comment: The comment describing the context for translators.
+    ///
+    /// This initializer mirrors the behavior of `SwiftUI.Text(_:tableName:bundle:comment:)`, supporting:
+    /// - Automatic string localization
+    /// - Inline markdown parsing and styling
+    ///
+    /// > important:
+    /// >
+    /// > This initializer does NOT support view embedding. If you want to embed a view, use ``init(content:)`` instead.
+    /// >
+    /// > `TextView` doesn’t render all styling possible in Markdown -- just like `SwiftUI.Text` -- breaks, style of any paragraph- or block-based formatting are not supported.
+    public init(
+        _ key: LocalizedStringKey,
+        tableName: String? = nil,
+        bundle: Bundle? = nil,
+        comment: StaticString? = nil
+    ) {
+        let localized = String(
+            localized: LocalizedStringResource(
+                String.LocalizationValue(
+                    key.key ?? ""
+                ),
+                table: tableName,
+                bundle: bundle ?? .main,
+                comment: comment
+            )
+        )
+        
+        let fragement: TextContent.Fragment
+        do {
+            fragement = try .attributedString(
+                AttributedString(
+                    markdown: localized,
+                    options: AttributedString.MarkdownParsingOptions(
+                        allowsExtendedAttributes: true,
+                        interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                        failurePolicy: .returnPartiallyParsedIfPossible
+                    )
+                )
+            )
+        } catch {
+            fragement = .string(localized)
+        }
+        self.rawContent = TextContent(fragement)
+    }
+    
+    /// Creates an instance with the given string literal without localization.
+    ///
+    /// - parameter content: A string literial to display without localization.
+    ///
+    /// This initializer aligns with the `SwiftUI.Text(verbatim:)` initializer.
+    ///
+    /// > important:
+    /// >
+    /// > This initializer does NOT support view embedding. If you want to embed a view, use ``init(content:)`` instead.
+    public init(verbatim content: String) {
+        self.rawContent = TextContent(.string(content))
     }
     
     public var body: some View {
