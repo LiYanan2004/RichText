@@ -58,7 +58,7 @@ import Introspection
 /// ```
 ///
 /// > note:
-/// > `.font(_:)` modifier only takes effect on OS 26 and newer platforms.
+/// > `.font(_:)` modifier only takes effect on OS 26 and newer platforms. To ensure the consistency, use ``font(_:)-(PlatformFont?)`` instead -- pass in `PlatformFont`.
 ///
 /// > note:
 /// > Text modifiers -- such as `baselineOffset(_:)`, `kerning(_:)`, `bold(_:)`, etc. -- are not available since SwiftUI does not expose environment values for those properties. For these use cases, use `AttributedString` instead.

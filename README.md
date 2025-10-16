@@ -137,3 +137,15 @@ struct ColorfulGlobeIcon: View {
 }
 ```
 
+## Troubleshooting
+
+#### SwiftUI `Font` is only reflected on OS 26+
+
+`SwiftUI.Font.Resolved` is only available on OS 26+. We use that to convert a `Font` into `PlatformFont`.
+
+If you need to customize font on older OS version, use `PlatformFont` explicitly.
+
+```swift
+TextView("TextView")
+    .font(UIFont.systemFont(ofSize: 28)) // This would work consistently across OS versions.
+```

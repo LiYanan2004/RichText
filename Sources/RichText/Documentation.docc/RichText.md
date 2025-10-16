@@ -11,6 +11,7 @@ RichText provides a supplementary ``TextView``, powered by **TextKit 2**, for Sw
 ### Text View
 
 - ``TextView``
+- ``TextView/font(_:)-(PlatformFont?)``
 - <doc:better-text-selection-experience>
 
 ### Text Content
