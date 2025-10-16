@@ -12,21 +12,16 @@ import Introspection
 /// inline SwiftUI views together while offers the same text selection experience.
 ///
 /// You declare the text content by using:
-/// - a type that conforms to `StringProtocol` for plain-text fragment
-///     - `String`
-///     - `Substring`
-///     - etc.
+/// - `StringProtocol`-conforming types, such as `String`, `Substring`, etc., for plain-text fragment
 /// - `Foundation.AttributedString` for attributed string (or rich text) fragment
 /// - `SwiftUI.View` for platform view fragment (without replacement text)
 /// - ``InlineView`` for platform view fragment (with optional replacement)
 ///     - This would have the same effect as previous one, if you choose not providing a replacement text.
 ///
-/// Here is a simple example of ``TextView``:
-///
 /// ```swift
 /// TextView {
 ///     "Tap the "
-///     InlineView("button") {
+///     InlineView("button") { // Copy the button will get text "button"
 ///         Button("button") {
 ///             print("Button Clicked")
 ///         }
@@ -38,11 +33,9 @@ import Introspection
 ///
 /// By describing the ``TextContent``, you will be able to embed native view while still getting the text selection experience.
 ///
-/// When you select the button and copy it, you will get the replacement text -- here, "button" -- if you specified one.
-///
 /// ### Additional notes on custom view embedding
 ///
-/// Providing an explicit ``id(_:)`` for each view is recommended, as it helps reduce unnecessary re-layouts and would help improve performance.
+/// **Providing an explicit ``id(_:)`` for each view is recommended**, as it helps reduce unnecessary re-layouts and would help improve performance.
 ///
 /// Plus, if your view owns a state (e.g. you're using `@State`, `@StateObject`, etc. within the view), the identity is also used to preserve the state of a view.
 ///
@@ -52,19 +45,23 @@ import Introspection
 ///
 /// Most of the text-styling view modifiers should work seamlessly with `TextView`.
 ///
-/// Some text modifiers, for example: `baselineOffset(_:)`, `kerning(_:)`, `bold(_:)`, etc., are not available since SwiftUI does not expose environment values for those properties. For these use cases, use `AttributedString` instead.
-///
 /// ```swift
 /// TextView {
 ///     "Hi there,"
 ///     LineBreak()
 ///     "RichText is a SwiftUI framework that provides better Text experience."
 /// }
-/// .font(.body)
+/// .font(.body) // only works on OS 26+
 /// .lineSpacing(8)
 /// .lineLimit(2)
 /// .truncationMode(.tail)
 /// ```
+///
+/// > note:
+/// > `.font(_:)` modifier only takes effect on OS 26 and newer platforms.
+///
+/// > note:
+/// > Text modifiers -- such as `baselineOffset(_:)`, `kerning(_:)`, `bold(_:)`, etc. -- are not available since SwiftUI does not expose environment values for those properties. For these use cases, use `AttributedString` instead.
 public struct TextView: View {
     /// A raw text content directly from the view's input
     ///
