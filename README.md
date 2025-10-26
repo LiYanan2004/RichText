@@ -56,6 +56,8 @@ TextView {
 }
 ```
 
+![](/Resources/init-with-attributed-string.png)
+
 ### Inline SwiftUI Views
 
 You can embed SwiftUI view along with other text as well, while preserving text selection capability.
@@ -67,6 +69,8 @@ TextView {
     Text("Hi, This is **RichText**.")
 }
 ```
+
+![](/Resources/init-with-swiftui-text.png)
 
 Other SwiftUI views are added **as an individual text element**, which means text selection will either include or exclude the entire view.
 
@@ -94,6 +98,8 @@ TextView {
 }
 ```
 
+![](/Resources/inline-view.gif)
+
 #### Dynamic Views
 
 If the embeded view contains its own state, you will need to provide a unique view identifier using `.id(_:)` to bind the view's identity, otherwise, its state will be reset whenever the `textContent` is recomputed.
@@ -105,7 +111,7 @@ In the following example, the state of the globe icon will get reset when `Conte
 >
 > Currently, `.id(_:)` inside `View.Body` is not recognizable.
 
-```
+```swift
 struct ContentView: View {
     @State private var isOpaque: Bool = true
    
@@ -136,6 +142,8 @@ struct ColorfulGlobeIcon: View {
     }
 }
 ```
+
+![](/Resources/dynamic-view.gif)
 
 ## Troubleshooting
 
