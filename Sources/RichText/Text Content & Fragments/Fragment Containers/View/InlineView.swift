@@ -24,10 +24,10 @@ import SwiftUI
 /// }
 /// ```
 public struct InlineView<Content: View>: TextContentProviding {
-    /// Embedding SwiftUI view.
-    public var content: Content
     /// The replacement attributed string.
     public var replacement: AttributedString?
+    /// Embedding SwiftUI view.
+    @ViewBuilder public var content: Content
 
     /// Creates an instance with the given replacement `AttributedString`.
     ///
@@ -35,7 +35,7 @@ public struct InlineView<Content: View>: TextContentProviding {
     /// - parameter content: A view builder that builds the content of the view.
     public init(
         _ replacement: AttributedString? = nil,
-        @ViewBuilder content: () -> Content
+         content: @escaping () -> Content
     ) {
         self.replacement = replacement
         self.content = content()
@@ -64,7 +64,7 @@ extension InlineView {
     /// - SeeAlso: ``init(string:content:)``
     public init(
         _ replacement: String? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) {
         var attributedString: AttributedString?
         if let replacement {
@@ -91,7 +91,7 @@ extension InlineView {
     /// - parameter content: A view builder that builds the content of the view.
     public init(
         string: String? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) {
         let replacement: AttributedString? = if let string {
             AttributedString(stringLiteral: string)
