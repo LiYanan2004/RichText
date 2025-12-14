@@ -26,17 +26,35 @@ import SwiftUI
 public struct InlineView<Content: View>: TextContentProviding {
     /// The replacement attributed string.
     public var replacement: AttributedString?
+    /// The identifier that associated with the view.
+    public var id: AnyHashable?
     /// Embedding SwiftUI view.
     @ViewBuilder public var content: Content
 
     /// Creates an instance with the given replacement `AttributedString`.
     ///
+    /// - parameter id: A `Hashable` identifier associated to this view.
     /// - parameter replacement: An `AttributedString` serves as the replacement or `nil` if you don't want to create a replacement.
     /// - parameter content: A view builder that builds the content of the view.
     public init(
-        _ replacement: AttributedString? = nil,
-         content: @escaping () -> Content
+        id: some Hashable,
+        replacement: AttributedString? = nil,
+        content: @escaping () -> Content
     ) {
+        self.id = AnyHashable(id)
+        self.replacement = replacement
+        self.content = content()
+    }
+    
+    /// Creates an instance with the given replacement `AttributedString`.
+    ///
+    /// - parameter replacement: An `AttributedString` serves as the replacement or `nil` if you don't want to create a replacement.
+    /// - parameter content: A view builder that builds the content of the view.
+    public init(
+        replacement: AttributedString? = nil,
+        content: @escaping () -> Content
+    ) {
+        self.id = nil
         self.replacement = replacement
         self.content = content()
     }
@@ -46,6 +64,7 @@ public struct InlineView<Content: View>: TextContentProviding {
             .view(
                 InlineHostingAttachment(
                     content,
+                    id: id,
                     replacement: replacement
                 )
             )
@@ -82,7 +101,7 @@ extension InlineView {
             }
         }
         
-        self.init(attributedString, content: content)
+        self.init(replacement: attributedString, content: content)
     }
     
     /// Creates an instance with the given string.
@@ -98,6 +117,6 @@ extension InlineView {
         } else {
             nil
         }
-        self.init(replacement, content: content)
+        self.init(replacement: replacement, content: content)
     }
 }

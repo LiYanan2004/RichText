@@ -13,7 +13,7 @@ import Introspection
 /// This serves as placeholder attachment to allow TextKit engine to correctly layout suroundding text.
 ///
 /// When the underlying platform text view calls its layout function, it will report the origin of all attachments back to SwiftUI view via `Observation` framework.
-public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unchecked Sendable {
+public final class InlineHostingAttachment: NSTextAttachment, @unchecked Sendable, Identifiable {
     /// The SwiftUI view hosted by the attachment.
     public var view: AnyView
     /// The identity of the view.
@@ -70,9 +70,17 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
     }
 
     @MainActor
-    init<Content: View>(_ content: Content, replacement: AttributedString?) {
+    init<Content: View>(
+        _ content: Content,
+        id: AnyHashable? = nil,
+        replacement: AttributedString?
+    ) {
         self.view = AnyView(content)
-        self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
+        if let id {
+            self.id = AnyHashable(id)
+        } else {
+            self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
+        }
 
         #if canImport(AppKit)
         let hostingView = NSHostingView(rootView: view)
@@ -185,11 +193,6 @@ public final class InlineHostingAttachment: NSTextAttachment, Identifiable, @unc
 }
 
 extension InlineHostingAttachment {
-    public override func isEqual(_ object: Any?) -> Bool {
-        guard let other = object as? InlineHostingAttachment else { return false }
-        return self.id == other.id
-    }
-    
     static func == (lhs: InlineHostingAttachment, rhs: InlineHostingAttachment) -> Bool {
         lhs.id == rhs.id
     }

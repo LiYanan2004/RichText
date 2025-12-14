@@ -63,14 +63,7 @@ import Introspection
 /// > note:
 /// > Text modifiers -- such as `baselineOffset(_:)`, `kerning(_:)`, `bold(_:)`, etc. -- are not available since SwiftUI does not expose environment values for those properties. For these use cases, use `AttributedString` instead.
 public struct TextView: View {
-    /// A raw text content directly from the view's input
-    ///
-    /// To keep the view layout consistent, we merge view attachments, since the result builder always creates new ones
-    /// which would otherwise reset the text engine’s layout and lead to incorrect layout results.
-    ///
-    /// To get merged result, use `content`.
-    private var rawContent: TextContent
-    @State private var content = TextContent()
+    public var content: TextContent
     
     @State private var attachments: [InlineHostingAttachment] = []
     @Environment(\.fontResolutionContext) private var fontResolutionContext
@@ -79,30 +72,14 @@ public struct TextView: View {
     ///
     /// - Parameter content: A ``TextContent`` that stores all fragments of the text.
     public init(@TextContentBuilder content: () -> TextContent) {
-        self.rawContent = content()
+        self.content = content()
     }
     
     public var body: some View {
         _textView
-            .onChange(of: rawContent, initial: true) {
-                var existingAttachmentsByID: [InlineHostingAttachment.ID : InlineHostingAttachment] = [:]
-                for attachment in self.attachments {
-                    existingAttachmentsByID[attachment.id] = attachment
-                }
-                let textContent = rawContent
-                // Reuse existing attachment states.
-                for case let .view(attachment) in textContent.fragments {
-                    if let existingState = existingAttachmentsByID[attachment.id]?.state {
-                        attachment.state = existingState
-                    }
-                }
-                
-                self.content = textContent
-                self.attachments = textContent.attachments
-            }
             .overlay(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) {
-                    ForEach(attachments) { attachment in
+                    ForEach(content.attachments) { attachment in
                         attachment.view
                             .onGeometryChange(for: CGSize.self, of: \.size) { size in
                                 attachment.state.size = size
@@ -115,6 +92,7 @@ public struct TextView: View {
                     }
                 }
             }
+            .clipped()
     }
     
     private var _textView: some View {
@@ -185,7 +163,7 @@ extension TextView {
         } catch {
             fragement = .string(localized)
         }
-        self.rawContent = TextContent(fragement)
+        self.content = TextContent(fragement)
     }
     
     /// Creates an instance with the given string literal without localization.
@@ -198,7 +176,7 @@ extension TextView {
     /// >
     /// > This initializer does NOT support view embedding. If you want to embed a view, use ``init(content:)`` instead.
     public init(verbatim content: String) {
-        self.rawContent = TextContent(.string(content))
+        self.content = TextContent(.string(content))
     }
     
     /// Creates an instance from a stored string without localization.
@@ -230,7 +208,7 @@ extension TextView {
     /// >
     /// > This initializer does NOT support embedded views. For mixed content (text and views), use ``init(content:)`` instead.
     @_disfavoredOverload public init(_ attributedString: AttributedString) {
-        self.rawContent = TextContent(.attributedString(attributedString))
+        self.content = TextContent(.attributedString(attributedString))
     }
 }
 
