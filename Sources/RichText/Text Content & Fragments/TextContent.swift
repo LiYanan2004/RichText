@@ -89,6 +89,8 @@ public struct TextContent: Hashable {
             context: context
         )
         
+        attributedString = TextAttributeConverter.resolveInlinePresentationIntent(in: attributedString)
+        
         return attributedString
     }
 }

@@ -5,6 +5,7 @@
 //  Created by Yanan Li on 2025/10/11.
 //
 
+import CoreText
 import SwiftUI
 
 #if canImport(AppKit)
@@ -137,6 +138,37 @@ enum TextAttributeConverter {
         return attributedString
     }
     
+    static func resolveInlinePresentationIntent(
+        in attributedString: AttributedString
+    ) -> AttributedString {
+        var attributedString = attributedString
+        
+        for run in attributedString.runs {
+            let intent = run.attributes.inlinePresentationIntent
+            guard let intent else { continue }
+            
+            var attributes = AttributeContainer()
+            if intent.contains(.strikethrough) {
+                #if canImport(AppKit)
+                attributes.appKit.strikethroughStyle = .single
+                #elseif canImport(UIKit)
+                attributes.uiKit.strikethroughStyle = .single
+                #endif
+            }
+            
+            #if canImport(UIKit)
+            if let font = run.uiKit.font {
+                let ctFont: CTFont = font
+                attributes.uiKit.font = ctFont.applyingInlinePresentationIntent(intent)
+            }
+            #endif
+            
+            attributedString[run.range].mergeAttributes(attributes)
+        }
+        
+        return attributedString
+    }
+    
     static func mergeEnvironmentValueIntoTextView<Representable: ViewRepresentable>(
         _ textView: PlatformTextView,
         context: RepresentableContext<Representable>
@@ -172,6 +204,47 @@ enum TextAttributeConverter {
 }
 
 // MARK: - Auxiliary
+
+fileprivate extension CTFont {
+    func applyingInlinePresentationIntent(_ intent: InlinePresentationIntent) -> CTFont {
+        var symbolicTraits: [CTFontSymbolicTraits] = []
+        
+        if intent.contains(.code) {
+            symbolicTraits.append(.traitMonoSpace)
+        }
+        if intent.contains(.stronglyEmphasized) {
+            symbolicTraits.append(.traitBold)
+        }
+        if intent.contains(.emphasized) {
+            symbolicTraits.append(.traitItalic)
+        }
+        
+        var resolvedFont = CTFontCreateCopyWithAttributes(
+            self,
+            0, // keep size
+            nil, // no transform
+            nil // same descriptor
+        )
+        for trait in symbolicTraits {
+            let existingTraits = CTFontGetSymbolicTraits(resolvedFont)
+            guard !existingTraits.contains(trait) else { continue }
+            
+            guard let updatedFont = CTFontCreateCopyWithSymbolicTraits(
+                resolvedFont,
+                0,
+                nil,
+                existingTraits.union(trait),
+                trait
+            ) else {
+                continue
+            }
+            
+            resolvedFont = updatedFont
+        }
+        
+        return resolvedFont
+    }
+}
 
 fileprivate extension NSLineBreakMode {
     init(_ truncationMode: Text.TruncationMode, lineLimit: Int?) {

@@ -23,12 +23,17 @@ import RichText
         }
         
         TextView {
+            try! AttributedString(
+                markdown: "**Bold**, *Italic*, ~strikethrough~, `code`"
+            )
+            LineBreak()
             AttributedString(
-                "Hello World",
+                "Bold, Italic, Strikethrough, code",
                 attributes: AttributeContainer()
-                    .inlinePresentationIntent(.emphasized.union(.stronglyEmphasized))
+                    .inlinePresentationIntent([.emphasized, .code, .stronglyEmphasized, .strikethrough])
             )
         }
+        .multilineTextAlignment(.center)
     }
 }
 
