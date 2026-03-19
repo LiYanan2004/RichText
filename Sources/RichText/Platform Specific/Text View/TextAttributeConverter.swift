@@ -28,26 +28,19 @@ enum TextAttributeConverter {
         
         for run in attributedString.runs {
             var attributes = run.attributes
-            var convertedAttributes: [NSAttributedString.Key : Any] = [:]
             
-            convertedAttributes[.font] = if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+            let font: PlatformFont? = if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
                 (context.environment.font ?? .default)
                     .resolve(in: context.environment.fontResolutionContext)
                     .ctFont as PlatformFont
             } else {
                 context.environment.fallbackPlatformFont
             }
+            if let font {
+                attributes.merge(AttributeContainer([.font : font]))
+            }
             
-            #if canImport(AppKit)
-            let paragraphStyle = attributes[keyPath: \.appKit.paragraphStyle]
-            #elseif canImport(UIKit)
-            let paragraphStyle = attributes[keyPath: \.uiKit.paragraphStyle]
-            #else
-            fatalError()
-            #endif
-
-            if paragraphStyle == nil {
-                let paragraphStyle = NSMutableParagraphStyle()
+            attributes.mergeParagraphStyle(mergePolicy: .keepCurrent) { paragraphStyle in
                 paragraphStyle.alignment = NSTextAlignment(
                     context.environment.multilineTextAlignment,
                     layoutDirection: context.environment.layoutDirection
@@ -61,17 +54,13 @@ enum TextAttributeConverter {
                 )
                 if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
                    let lineHeight = context.environment.lineHeight {
-                    let (min, max, multiple) = lineHeight._lineSetting(
-                        font: convertedAttributes[.font] as? PlatformFont
-                    )
+                    let (min, max, multiple) = lineHeight._lineSetting(font: font)
                     paragraphStyle.minimumLineHeight = min
                     paragraphStyle.maximumLineHeight = max
                     paragraphStyle.lineHeightMultiple = multiple
                 }
-                convertedAttributes[.paragraphStyle] = paragraphStyle
             }
             
-            attributes.merge(AttributeContainer(convertedAttributes))
             attributedString[run.range].setAttributes(attributes)
         }
         
@@ -115,23 +104,21 @@ enum TextAttributeConverter {
             convertedAttributes[.tracking] = swiftUIAttributes.tracking
             convertedAttributes[.baselineOffset] = swiftUIAttributes.baselineOffset
             
-            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
-               let lineHeight = swiftUIAttributes.lineHeight {
-                let paragraphStyle = (attributes.paragraphStyle as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
-                
-                let (min, max, multiple) = lineHeight._lineSetting(
-                    font: convertedAttributes[.font] as? PlatformFont
-                )
-                paragraphStyle.minimumLineHeight = min
-                paragraphStyle.maximumLineHeight = max
-                paragraphStyle.lineHeightMultiple = multiple
-                
-                convertedAttributes[.paragraphStyle] = paragraphStyle
-            }
-            
             attributes.merge(
                 AttributeContainer(convertedAttributes)
             )
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
+               let lineHeight = swiftUIAttributes.lineHeight {
+                attributes.mergeParagraphStyle(mergePolicy: .keepCurrent) { paragraphStyle in
+                    let (min, max, multiple) = lineHeight._lineSetting(
+                        font: convertedAttributes[.font] as? PlatformFont
+                    )
+                    paragraphStyle.minimumLineHeight = min
+                    paragraphStyle.maximumLineHeight = max
+                    paragraphStyle.lineHeightMultiple = multiple
+                }
+            }
+            
             attributedString[run.range].setAttributes(attributes)
         }
         

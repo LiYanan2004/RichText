@@ -23,7 +23,7 @@ public struct TextContent: Hashable {
         case view(InlineHostingAttachment)
         
         @MainActor
-        func asAttributedString() -> AttributedString {
+        public func asAttributedString() -> AttributedString {
             switch self {
                 case .string(let string):
                     return AttributedString(string)

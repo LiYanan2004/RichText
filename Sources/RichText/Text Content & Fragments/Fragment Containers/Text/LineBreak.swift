@@ -21,8 +21,8 @@ public struct LineBreak: InterFragment {
     /// Produces a ``TextContent`` value that contains the configured line breaks.
     public var textContent: TextContent {
         TextContent(
-            .string(
-                [String](repeating: "\n", count: count).joined()
+            .attributedString(
+                AttributedString([String](repeating: "\n", count: count).joined())
             )
         )
     }

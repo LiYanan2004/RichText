@@ -84,7 +84,6 @@ public struct TextView: View {
                     }
                 }
             }
-            .clipped()
     }
     
     struct AttachmentView: View, @MainActor Equatable {
@@ -98,6 +97,7 @@ public struct TextView: View {
         
         var body: some View {
             attachment.view
+                .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGSize.self, of: \.size) { size in
                     state.size = size
                 }

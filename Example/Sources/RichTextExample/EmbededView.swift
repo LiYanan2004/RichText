@@ -21,8 +21,9 @@ struct DynamicViewEmbededTextView: View {
             Toggle("Opaque", isOn: $isOpaque)
             TextView {
                 "Hello "
-                ColorfulGlobeIcon()
-                    .id("globe-icon") // Explicitly bind the identity here.
+                InlineView(id: "globe-icon", replacement: "globe") { // Explicitly bind the identity here.
+                    ColorfulGlobeIcon()
+                }
                 " World"
             }
             .opacity(isOpaque ? 1 : 0.5)
