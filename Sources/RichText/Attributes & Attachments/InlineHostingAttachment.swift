@@ -6,17 +6,20 @@
 //
 
 import SwiftUI
-import Combine
 import Introspection
 
 /// An attachment that hosts an inline SwiftUI view with other text fragments.
 ///
-/// This serves as a placeholder attachment that lets TextKit lay out surrounding text.
-///
-/// When the platform text view lays out, it updates each attachment's origin through a Combine-backed `ObservableObject`.
-public final class InlineHostingAttachment: NSTextAttachment, @unchecked Sendable, Identifiable {
-    /// The SwiftUI view hosted by the attachment.
-    public var view: AnyView
+/// TextKit uses this attachment's bounds to reserve inline space, while the
+/// owning platform text view installs and positions the hosted platform view
+/// from TextKit layout geometry.
+final public class InlineHostingAttachment: NSTextAttachment {
+    var rootView: AnyView
+    
+    #if canImport(UIKit)
+    private var hostingController: UIHostingController<AnyView>?
+    #endif
+    
     /// The identity of the view.
     ///
     /// Typically, if your view has any state or is initialized with random stuffs,
@@ -29,8 +32,7 @@ public final class InlineHostingAttachment: NSTextAttachment, @unchecked Sendabl
     /// }
     /// ```
     ///
-    /// By doing that, you will also get better performance since it helps reduce unnecessary re-layouts under the hood,
-    /// so **it's recommended to provide explicit id for every single view!**
+    /// By doing that, you will also get better performance since it helps reduce unnecessary re-layouts under the hood, so **it's recommended to provide explicit id for every single view!**
     ///
     /// If you don't provide an id explicitly, a random UUID will be created.
     /// Whenever ``TextView`` refreshes, your view will be recreated and refreshed (all states will be reset also).
@@ -52,135 +54,121 @@ public final class InlineHostingAttachment: NSTextAttachment, @unchecked Sendabl
     /// ```
     public var replacement: AttributedString?
     
-    final class State: ObservableObject {
-        var size: CGSize {
-            didSet {
-                guard size != oldValue else { return }
-                onSizeChange?()
-            }
-        }
+    override init(data contentData: Data?, ofType uti: String?) {
+        self.id = UUID()
+        self.rootView = AnyView(EmptyView())
         
-        @Published var origin: CGPoint?
-        var onSizeChange: (() -> Void)?
-        
-        init(size: CGSize, origin: CGPoint? = nil) {
-            self.size = size
-            self.origin = origin
-        }
+        super.init(data: contentData, ofType: uti)
+        self.allowsTextAttachmentView = true
     }
-    var state: State
-
+    
     @MainActor
-    public init<Content: View>(
-        _ content: Content,
-        id: AnyHashable? = nil,
-        replacement: AttributedString?
-    ) {
-        self.view = AnyView(content)
+    init(_ content: some View, id: AnyHashable? = nil, replacement: AttributedString?) {
+        self.rootView = AnyView(content)
+        self.replacement = replacement
+
         if let id {
             self.id = AnyHashable(id)
         } else {
             self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
         }
 
-        #if canImport(AppKit)
-        let hostingView = NSHostingView(rootView: view)
-        let initialSize = hostingView.intrinsicContentSize
-        #elseif canImport(UIKit)
-        let hostingController = UIHostingController(rootView: view)
-        let initialSize = hostingController.view.intrinsicContentSize
-        #else
-        let initialSize = CGSize(width: 10, height: 10)
-        #endif
-
-        self.state = State(size: initialSize)
         super.init(data: nil, ofType: nil)
-        
-        self.replacement = replacement
+        self.allowsTextAttachmentView = true
     }
-    
+
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    var ascender: CGFloat?
-
-    public override func attachmentBounds(
-        for textContainer: NSTextContainer?,
-        proposedLineFragment lineFrag: CGRect,
-        glyphPosition position: CGPoint,
-        characterIndex charIndex: Int
-    ) -> CGRect {
-        guard state.size != .zero else { return .zero }
-        
-        let font = _retriveFontFromSurroundingText(
-            textContainer: textContainer,
-            charIndex: charIndex
-        )
-        
-        var origin = CGPoint.zero
-        if let font {
-            origin.y = _descentFactor(font) * state.size.height * -1
-            ascender = state.size.height + origin.y
-        }
-        return CGRect(
-            origin: origin,
-            size: state.size
-        )
-    }
-    
-    private func _retriveFontFromSurroundingText(
-        textContainer: NSTextContainer?,
-        charIndex: Int
-    ) -> PlatformFont? {
-        let textContentManager = textContainer?
-            .textLayoutManager?
-            .textContentManager as? NSTextContentStorage
-        let attributedString = textContentManager?.attributedString
-        guard let attributedString else { return nil }
-        
-        let effectiveRange = 0 ..< attributedString.length
-        
-        let ranges = [
-            (charIndex - 1 ..< charIndex), // previous character
-            (charIndex + 1 ..< charIndex + 2) // next character
-        ]
-        if let range = ranges.first(where: {
-            guard effectiveRange.contains($0) else { return false }
-            
-            let lastCharacter = attributedString
-                .attributedSubstring(from: NSRange($0))
-                .string.last
-            guard let lastCharacter else {
-                return false
-            }
-            
-            return !lastCharacter.isNewline
-        }) {
-            return attributedString.attribute(
-                .font,
-                at: range.lowerBound,
-                effectiveRange: nil
-            ) as? PlatformFont
-        }
-        
-        return nil
-    }
-    
-    public override func image(
-        forBounds imageBounds: CGRect,
-        textContainer: NSTextContainer?,
-        characterIndex charIndex: Int
-    ) -> PlatformImage? {
-        return nil
-    }
-
     public override func viewProvider(
         for parentView: PlatformView?,
         location: any NSTextLocation,
         textContainer: NSTextContainer?
     ) -> NSTextAttachmentViewProvider? {
-        return nil
+        InlineHostingAttachmentViewProvider(
+            textAttachment: self,
+            parentView: parentView,
+            textLayoutManager: textContainer?.textLayoutManager,
+            location: location
+        )
+    }
+
+    var ascender: CGFloat?
+    
+    @MainActor
+    lazy var hostingView: PlatformView = {
+        #if canImport(AppKit)
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.sizingOptions = .intrinsicContentSize
+        return hostingView
+        #elseif canImport(UIKit)
+        let hostingController = UIHostingController(rootView: rootView)
+        hostingController.view.backgroundColor = .clear
+        self.hostingController = hostingController
+        return hostingController.view!
+        #endif
+    }()
+}
+
+extension InlineHostingAttachment {
+    static func == (lhs: InlineHostingAttachment, rhs: InlineHostingAttachment) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
+    var inlineHostingAttachment: InlineHostingAttachment! {
+        self.textAttachment as? InlineHostingAttachment
+    }
+    
+    override init(
+        textAttachment: NSTextAttachment,
+        parentView: PlatformView?,
+        textLayoutManager: NSTextLayoutManager?,
+        location: any NSTextLocation
+    ) {
+        super.init(
+            textAttachment: textAttachment,
+            parentView: parentView,
+            textLayoutManager: textLayoutManager,
+            location: location
+        )
+        tracksTextAttachmentViewBounds = true
+    }
+    
+    override func loadView() {
+        view = makeHostingView()
+    }
+    
+    private func makeHostingView() -> PlatformView {
+        nonisolated(unsafe) let attachment = self.inlineHostingAttachment!
+
+        return MainActor.assumeIsolated {
+            attachment.hostingView
+        }
+    }
+    
+    override func attachmentBounds(
+        for attributes: [NSAttributedString.Key: Any],
+        location: any NSTextLocation,
+        textContainer: NSTextContainer?,
+        proposedLineFragment: CGRect,
+        position: CGPoint
+    ) -> CGRect {
+        guard let view else { return .zero }
+        let size = MainActor.assumeIsolated {
+            view.intrinsicContentSize
+        }
+        
+        var origin = CGPoint.zero
+        if let font = attributes[.font] as? PlatformFont {
+            origin.y = _descentFactor(font) * size.height * -1
+            inlineHostingAttachment.ascender = size.height + origin.y
+        }
+        
+        return CGRect(origin: origin, size: size)
     }
     
     @inlinable func _descentFactor(_ font: PlatformFont?) -> CGFloat {
@@ -193,8 +181,3 @@ public final class InlineHostingAttachment: NSTextAttachment, @unchecked Sendabl
     }
 }
 
-extension InlineHostingAttachment {
-    static func == (lhs: InlineHostingAttachment, rhs: InlineHostingAttachment) -> Bool {
-        lhs.id == rhs.id
-    }
-}

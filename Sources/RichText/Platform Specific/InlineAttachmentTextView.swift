@@ -8,12 +8,20 @@
 import SwiftUI
 
 final class InlineAttachmentTextView: PlatformTextView {
+    private var ownedTextContentStorage: NSTextContentStorage?
+    
     var _attributedString: AttributedString = .init() {
         willSet { setAttributedString(newValue) }
     }
     
+    private var inlineAttachmentViews: [ObjectIdentifier: PlatformView] = [:]
+    
     var textContentManager: NSTextContentManager? {
         textLayoutManager?.textContentManager
+    }
+    
+    var _textContentStorage: NSTextContentStorage? {
+        textContentManager as? NSTextContentStorage
     }
     
     override var intrinsicContentSize: CGSize {
@@ -27,7 +35,7 @@ final class InlineAttachmentTextView: PlatformTextView {
     
     #if canImport(AppKit)
     // FIXME: This only works for "Copy" and "Search with Google".
-    // Loopup, Translate, Share are using original strings
+    // Lookup, Translate, Share are using original strings
     override func attributedSubstring(
         forProposedRange range: NSRange,
         actualRange: NSRangePointer?
@@ -95,8 +103,6 @@ final class InlineAttachmentTextView: PlatformTextView {
     }
     
     private func setAttributedString(_ attributedString: AttributedString) {
-        guard let _textStorage else { return }
-        
         do {
             let attributed = try NSMutableAttributedString(
                 attributedString: attributedString.nsAttributedString
@@ -105,18 +111,25 @@ final class InlineAttachmentTextView: PlatformTextView {
             
             attributed._fixForgroundColorIfNecessary(in: range)
             attributed._fixFont(self.font, in: range)
-            attributed.enumerateAttribute(
-                .inlineHostingAttachment,
-                in: range
-            ) { value, range, _ in
-                guard let attachment = value as? InlineHostingAttachment else { return }
-                attachment.state.onSizeChange = { [weak self] in
-                    guard let self else { return }
-                    invalidateTextLayout(at: range)
+            
+            if let textStorage = _textContentStorage?.textStorage {
+                textStorage.setAttributedString(attributed)
+                if let textLayoutManager {
+                    textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
                 }
+            } else if let textContentStorage = _textContentStorage {
+                textContentStorage.attributedString = attributed
+                if let textLayoutManager {
+                    textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
+                }
+            } else if let textLayoutManager {
+                textLayoutManager.replaceContents(in: textLayoutManager.documentRange, with: attributed)
+                textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
+            } else {
+                _textStorage?.setAttributedString(attributed)
             }
             
-            _textStorage.setAttributedString(attributed)
+            _invalidateTextLayout()
         } catch {
             // TODO: use logger.
             print("Failed to build attributed string: \(error)")
@@ -126,6 +139,24 @@ final class InlineAttachmentTextView: PlatformTextView {
 }
 
 // MARK: - Helpers
+
+extension InlineAttachmentTextView {
+    static func textViewUsingTextLayoutManager() -> InlineAttachmentTextView {
+        let textContentStorage = NSTextContentStorage()
+        let textLayoutManager = NSTextLayoutManager()
+        let textContainer = NSTextContainer(size: .zero)
+        
+        textContentStorage.addTextLayoutManager(textLayoutManager)
+        textLayoutManager.textContainer = textContainer
+        
+        let textView = InlineAttachmentTextView(
+            frame: .zero,
+            textContainer: textContainer
+        )
+        textView.ownedTextContentStorage = textContentStorage
+        return textView
+    }
+}
 
 extension InlineAttachmentTextView {
     var textContainerOffset: CGPoint {
@@ -160,69 +191,6 @@ extension InlineAttachmentTextView {
         return ceil(totalHeight)
     }
     
-    func enumerateInlineHostingAttchment(
-        in textStorage: NSTextStorage,
-        handler: (InlineHostingAttachment, NSRange) -> Void
-    ) {
-        let range = NSRange(location: 0, length: textStorage.length)
-        textStorage.enumerateAttribute(.attachment, in: range) { value, range, _ in
-            guard let attachment = value as? InlineHostingAttachment else { return }
-            handler(attachment, range)
-        }
-    }
-}
-
-// MARK: - Attachment Positioning
-
-extension InlineAttachmentTextView {
-    func updateAttachmentOrigins() {
-        guard let textLayoutManager, let _textStorage, let textContentManager else {
-            return
-        }
-        
-        textLayoutManager.ensureLayout(
-            for: textLayoutManager.documentRange
-        )
-        
-        enumerateInlineHostingAttchment(
-            in: _textStorage
-        ) { attachment, range in
-            let textRange = NSTextRange(
-                range,
-                textContentManager: textContentManager
-            )
-            guard let textRange else { return }
-            
-            var firstFrame: CGRect?
-            var baseline: CGFloat = .zero
-            textLayoutManager.enumerateTextSegments(
-                in: textRange,
-                type: .standard,
-                options: [.rangeNotRequired]
-            ) { _, segmentFrame, segmentBaseline, _ in
-                firstFrame = segmentFrame
-                baseline = segmentBaseline
-                return false
-            }
-            
-            guard let segmentFrame = firstFrame else { return }
-            var origin: CGPoint?
-            
-            if !segmentFrame.isEmpty {
-                origin = textContainerOffset
-                origin!.x += segmentFrame.origin.x
-                // align top of the view to the baseline
-                origin!.y += baseline + segmentFrame.minY
-                // align the baseline of the view to the "line" baseline
-                origin!.y -= attachment.ascender ?? attachment.state.size.height
-            }
-            if attachment.state.origin != origin {
-                Task { @MainActor in
-                    attachment.state.origin = origin
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Layout
@@ -257,15 +225,126 @@ extension InlineAttachmentTextView {
     override func layout() {
         super.layout()
         invalidateIntrinsicContentSize()
-        updateAttachmentOrigins()
+        updateInlineAttachmentViews()
     }
     #elseif canImport(UIKit)
     override func layoutSubviews() {
         super.layoutSubviews()
         invalidateIntrinsicContentSize()
-        updateAttachmentOrigins()
+        updateInlineAttachmentViews()
     }
     #endif
+}
+
+// MARK: - Attachment Views
+
+extension InlineAttachmentTextView {
+    func updateInlineAttachmentViews() {
+        guard let textLayoutManager else { return }
+        
+        textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
+        
+        var visibleAttachmentViews = Set<ObjectIdentifier>()
+        var didUseTextAttachmentViewProvider = false
+        textLayoutManager.enumerateTextLayoutFragments(
+            from: textLayoutManager.documentRange.location,
+            options: [.ensuresLayout]
+        ) { [weak self] textLayoutFragment in
+            guard let self else { return false }
+            
+            let fragmentOrigin = textLayoutFragment.layoutFragmentFrame.origin
+            for textAttachmentViewProvider in textLayoutFragment.textAttachmentViewProviders {
+                didUseTextAttachmentViewProvider = true
+                let attachmentFrame = textLayoutFragment.frameForTextAttachment(
+                    at: textAttachmentViewProvider.location
+                )
+                guard !attachmentFrame.isEmpty,
+                      let attachmentView = textAttachmentViewProvider.view else {
+                    continue
+                }
+                
+                var frame = attachmentFrame
+                frame.origin.x += fragmentOrigin.x + textContainerOffset.x
+                frame.origin.y += fragmentOrigin.y + textContainerOffset.y
+                attachmentView.frame = frame
+                
+                if attachmentView.superview !== self {
+                    addSubview(attachmentView)
+                }
+                
+                let attachmentViewID = ObjectIdentifier(attachmentView)
+                visibleAttachmentViews.insert(attachmentViewID)
+                inlineAttachmentViews[attachmentViewID] = attachmentView
+            }
+            
+            return true
+        }
+        
+        if !didUseTextAttachmentViewProvider {
+            updateInlineAttachmentViewsUsingTextSegments(
+                visibleAttachmentViews: &visibleAttachmentViews
+            )
+        }
+        
+        for (attachmentViewID, attachmentView) in inlineAttachmentViews
+            where !visibleAttachmentViews.contains(attachmentViewID) {
+            attachmentView.removeFromSuperview()
+            inlineAttachmentViews[attachmentViewID] = nil
+        }
+    }
+    
+    private func updateInlineAttachmentViewsUsingTextSegments(
+        visibleAttachmentViews: inout Set<ObjectIdentifier>
+    ) {
+        guard let textLayoutManager,
+              let textContentManager,
+              let textStorage = _textContentStorage?.textStorage ?? _textStorage else {
+            return
+        }
+        
+        let storageRange = NSRange(location: 0, length: textStorage.length)
+        textStorage.enumerateAttribute(.attachment, in: storageRange) { value, range, _ in
+            guard let inlineHostingAttachment = value as? InlineHostingAttachment,
+                  let textRange = NSTextRange(range, textContentManager: textContentManager) else {
+                return
+            }
+            
+            var firstFrame: CGRect?
+            var baseline: CGFloat = .zero
+            textLayoutManager.enumerateTextSegments(
+                in: textRange,
+                type: .standard,
+                options: [.rangeNotRequired]
+            ) { _, segmentFrame, segmentBaseline, _ in
+                firstFrame = segmentFrame
+                baseline = segmentBaseline
+                return false
+            }
+            
+            guard let segmentFrame = firstFrame,
+                  !segmentFrame.isEmpty else {
+                return
+            }
+            
+            let attachmentView = MainActor.assumeIsolated {
+                inlineHostingAttachment.hostingView
+            }
+            
+            var frame = CGRect(origin: textContainerOffset, size: attachmentView.intrinsicContentSize)
+            frame.origin.x += segmentFrame.origin.x
+            frame.origin.y += baseline + segmentFrame.minY
+            frame.origin.y -= inlineHostingAttachment.ascender ?? attachmentView.intrinsicContentSize.height
+            attachmentView.frame = frame
+            
+            if attachmentView.superview !== self {
+                addSubview(attachmentView)
+            }
+            
+            let attachmentViewID = ObjectIdentifier(attachmentView)
+            visibleAttachmentViews.insert(attachmentViewID)
+            inlineAttachmentViews[attachmentViewID] = attachmentView
+        }
+    }
 }
 
 // MARK: - Auxiliary
@@ -318,20 +397,28 @@ extension InlineAttachmentTextView {
 
 fileprivate extension NSMutableAttributedString {
     func _fixForgroundColorIfNecessary(in range: NSRange) {
-        #if canImport(UIKit)
         enumerateAttributes(
             in: range,
             options: []
         ) { attrs, range, _ in
             if attrs[.foregroundColor] == nil {
+                #if canImport(AppKit)
+                addAttribute(.foregroundColor, value: NSColor.labelColor, range: range)
+                #elseif canImport(UIKit)
                 addAttribute(.foregroundColor, value: UIColor.label, range: range)
+                #endif
             }
         }
-        #endif
     }
     
     func _fixFont(_ font: PlatformFont?, in range: NSRange) {
-        guard let font else { return }
+        let font: PlatformFont = font ?? {
+            #if canImport(AppKit)
+            return NSFont.systemFont(ofSize: NSFont.systemFontSize)
+            #elseif canImport(UIKit)
+            return UIFont.preferredFont(forTextStyle: .body)
+            #endif
+        }()
         
         enumerateAttributes(
             in: range,

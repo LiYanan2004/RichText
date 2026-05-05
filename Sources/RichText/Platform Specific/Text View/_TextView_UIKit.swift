@@ -14,7 +14,7 @@ struct _TextView_UIKit: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     func makeUIView(context: Context) -> InlineAttachmentTextView {
-        let textView = InlineAttachmentTextView(frame: .zero)
+        let textView = InlineAttachmentTextView.textViewUsingTextLayoutManager()
         textView.backgroundColor = .clear
         textView.delegate = context.coordinator
         
