@@ -9,11 +9,11 @@ import SwiftUI
 
 final class InlineAttachmentTextView: PlatformTextView {
     private var ownedTextContentStorage: NSTextContentStorage?
-    
-    var _attributedString: AttributedString = .init() {
-        willSet { setAttributedString(newValue) }
+    private var _attributedString: AttributedString = .init() {
+        didSet {
+            setAttributedString(_attributedString)
+        }
     }
-    
     private var inlineAttachmentViews: [ObjectIdentifier: PlatformView] = [:]
     
     var textContentManager: NSTextContentManager? {
@@ -136,6 +136,11 @@ final class InlineAttachmentTextView: PlatformTextView {
         }
     }
     
+    func applyAttributedString(_ attributedString: AttributedString) {
+        updateInlineAttachmentsIfPossible(
+            newAttrString: attributedString
+        )
+    }
 }
 
 // MARK: - Helpers
@@ -155,6 +160,52 @@ extension InlineAttachmentTextView {
         )
         textView.ownedTextContentStorage = textContentStorage
         return textView
+    }
+    
+    private func updateInlineAttachmentsIfPossible(newAttrString: AttributedString) {
+        var mergedAttributedString = newAttrString
+        
+        for newRun in mergedAttributedString.runs {
+            guard let attachment = newRun[keyPath: \.inlineHostingAttachment],
+                  let oldAttachment = currentAttachment(id: attachment.id)
+            else { continue }
+            
+            let didChangeIntrinsicContentSize = MainActor.assumeIsolated {
+                oldAttachment.updateContent(from: attachment)
+            }
+            if didChangeIntrinsicContentSize {
+                invalidateTextLayout(at: NSRange(newRun.range, in: newAttrString))
+            }
+            
+            mergedAttributedString[newRun.range].setAttributes(
+                newRun.attributes.merging(
+                    AttributeContainer().inlineHostingAttachment(oldAttachment),
+                    mergePolicy: .keepNew
+                )
+            )
+        }
+        
+        self._attributedString = mergedAttributedString
+    }
+    
+    private func currentAttachment(id: AnyHashable) -> InlineHostingAttachment? {
+        guard let textStorage = _textContentStorage?.textStorage ?? _textStorage else {
+            return nil
+        }
+        
+        let fullRange = NSRange(location: 0, length: textStorage.length)
+        var attachment: InlineHostingAttachment?
+        textStorage.enumerateAttribute(.attachment, in: fullRange) { value, range, stop in
+            guard let currentAttachment = value as? InlineHostingAttachment,
+                  currentAttachment.id == id else {
+                return
+            }
+            
+            attachment = currentAttachment
+            stop.pointee = true
+        }
+        
+        return attachment
     }
 }
 
@@ -366,7 +417,6 @@ extension NSTextRange {
     }
 }
 
-
 // MARK: - Helpers
 
 extension InlineAttachmentTextView {
@@ -390,6 +440,49 @@ extension InlineAttachmentTextView {
     /// For UIKit, this is guaranteed to be non-`nil`. For AppKit, this could be `nil`.
     var _textStorage: NSTextStorage? {
         self.textStorage
+    }
+}
+
+private extension TextAlignment {
+    var _richTextStorageValue: Int {
+        switch self {
+            case .leading:
+                return 0
+            case .center:
+                return 1
+            case .trailing:
+                return 2
+            @unknown default:
+                return -1
+        }
+    }
+}
+
+private extension LayoutDirection {
+    var _richTextStorageValue: Int {
+        switch self {
+            case .leftToRight:
+                return 0
+            case .rightToLeft:
+                return 1
+            @unknown default:
+                return -1
+        }
+    }
+}
+
+private extension Text.TruncationMode {
+    var _richTextStorageValue: Int {
+        switch self {
+            case .head:
+                return 0
+            case .middle:
+                return 1
+            case .tail:
+                return 2
+            @unknown default:
+                return -1
+        }
     }
 }
 

@@ -41,7 +41,7 @@ struct _TextView_AppKit: NSViewRepresentable {
             textView,
             context: context
         )
-        textView._attributedString = content.attributedString(context: context)
+        textView.applyAttributedString(content.attributedString(context: context))
     }
     
     final class Coordinator: NSObject, NSTextViewDelegate {

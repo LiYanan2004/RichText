@@ -16,6 +16,10 @@ import Introspection
 final public class InlineHostingAttachment: NSTextAttachment {
     var rootView: AnyView
     
+    #if canImport(AppKit)
+    private var hostingViewStorage: NSHostingView<AnyView>?
+    #endif
+    
     #if canImport(UIKit)
     private var hostingController: UIHostingController<AnyView>?
     #endif
@@ -63,7 +67,11 @@ final public class InlineHostingAttachment: NSTextAttachment {
     }
     
     @MainActor
-    init(_ content: some View, id: AnyHashable? = nil, replacement: AttributedString?) {
+    init(
+        _ content: some View,
+        id: AnyHashable? = nil,
+        replacement: AttributedString?
+    ) {
         self.rootView = AnyView(content)
         self.replacement = replacement
 
@@ -102,6 +110,7 @@ final public class InlineHostingAttachment: NSTextAttachment {
         #if canImport(AppKit)
         let hostingView = NSHostingView(rootView: rootView)
         hostingView.sizingOptions = .intrinsicContentSize
+        self.hostingViewStorage = hostingView
         return hostingView
         #elseif canImport(UIKit)
         let hostingController = UIHostingController(rootView: rootView)
@@ -110,6 +119,25 @@ final public class InlineHostingAttachment: NSTextAttachment {
         return hostingController.view!
         #endif
     }()
+    
+    @MainActor
+    func updateContent(from attachment: InlineHostingAttachment) -> Bool {
+        self.rootView = attachment.rootView
+        self.replacement = attachment.replacement
+        
+        let view = hostingView
+        let previousSize = view.intrinsicContentSize
+        
+        #if canImport(AppKit)
+        hostingViewStorage?.rootView = rootView
+        let updatedSize = view.intrinsicContentSize
+        return previousSize != updatedSize
+        #elseif canImport(UIKit)
+        hostingController?.rootView = rootView
+        let updatedSize = view.intrinsicContentSize
+        return previousSize != updatedSize
+        #endif
+    }
 }
 
 extension InlineHostingAttachment {
@@ -138,16 +166,20 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         tracksTextAttachmentViewBounds = true
     }
     
+    var hostingView: PlatformView?
+    
     override func loadView() {
         view = makeHostingView()
     }
     
     private func makeHostingView() -> PlatformView {
         nonisolated(unsafe) let attachment = self.inlineHostingAttachment!
-
-        return MainActor.assumeIsolated {
+        
+        let hostingView = MainActor.assumeIsolated {
             attachment.hostingView
         }
+        self.hostingView = hostingView
+        return hostingView
     }
     
     override func attachmentBounds(
@@ -180,4 +212,3 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         return abs(font.descender) / lineHeight
     }
 }
-

@@ -34,7 +34,7 @@ struct _TextView_UIKit: UIViewRepresentable {
             textView,
             context: context
         )
-        textView._attributedString = content.attributedString(context: context)
+        textView.applyAttributedString(content.attributedString(context: context))
     }
     
     // For UITextView, it comes with a UIScrollView
