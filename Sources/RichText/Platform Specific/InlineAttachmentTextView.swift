@@ -112,21 +112,24 @@ final class InlineAttachmentTextView: PlatformTextView {
             attributed._fixForgroundColorIfNecessary(in: range)
             attributed._fixFont(self.font, in: range)
             
+            _textStorage?.beginEditing()
+            
             if let textStorage = _textContentStorage?.textStorage {
                 textStorage.setAttributedString(attributed)
-                if let textLayoutManager {
-                    textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
-                }
             } else if let textContentStorage = _textContentStorage {
                 textContentStorage.attributedString = attributed
-                if let textLayoutManager {
-                    textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
-                }
             } else if let textLayoutManager {
                 textLayoutManager.replaceContents(in: textLayoutManager.documentRange, with: attributed)
-                textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
             } else {
                 _textStorage?.setAttributedString(attributed)
+            }
+            
+            _textStorage?.endEditing()
+            
+            if let textLayoutManager {
+                textLayoutManager.invalidateLayout(for: textLayoutManager.documentRange)
+                textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
+                textLayoutManager.textViewportLayoutController.layoutViewport()
             }
             
             _invalidateTextLayout()
