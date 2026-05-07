@@ -182,7 +182,10 @@ extension InlineAttachmentTextView {
             
             mergedAttributedString[newRun.range].setAttributes(
                 newRun.attributes.merging(
-                    AttributeContainer().inlineHostingAttachment(oldAttachment),
+                    try! AttributeContainer(
+                        [.inlineHostingAttachment : oldAttachment],
+                        including: \.richText
+                    ),
                     mergePolicy: .keepNew
                 )
             )

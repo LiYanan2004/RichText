@@ -30,8 +30,10 @@ public struct TextContent {
                 case .attributedString(let attributedString):
                     return attributedString
                 case .view(let attachment):
-                    let container = AttributeContainer()
-                        .inlineHostingAttachment(attachment)
+                    let container = try! AttributeContainer(
+                        [.inlineHostingAttachment : attachment],
+                        including: \.richText
+                    )
                     return AttributedString("\u{FFFC}", attributes: container)
             }
         }

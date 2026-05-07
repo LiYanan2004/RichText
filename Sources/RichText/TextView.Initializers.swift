@@ -121,7 +121,7 @@ extension AttributedString {
                 )
                 let range = NSRange(location: 0, length: converted.length)
                 
-                if let attachment = run.inlineHostingAttachment {
+                if let attachment = run[keyPath: \.inlineHostingAttachment] {
                     converted.addAttribute(
                         .attachment,
                         value: attachment,
