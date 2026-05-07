@@ -14,7 +14,7 @@ struct _TextView_AppKit: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     func makeNSView(context: Context) -> InlineAttachmentTextView {
-        let textView = InlineAttachmentTextView(frame: .zero)
+        let textView = InlineAttachmentTextView.textViewUsingTextLayoutManager()
         textView.drawsBackground = false
         textView.delegate = context.coordinator.self
         
@@ -41,7 +41,7 @@ struct _TextView_AppKit: NSViewRepresentable {
             textView,
             context: context
         )
-        textView._attributedString = content.attributedString(context: context)
+        textView.applyAttributedString(content.attributedString(context: context))
     }
     
     final class Coordinator: NSObject, NSTextViewDelegate {

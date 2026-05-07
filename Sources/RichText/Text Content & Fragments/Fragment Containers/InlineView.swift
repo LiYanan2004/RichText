@@ -36,8 +36,8 @@ public struct InlineView<Content: View>: TextContentProviding {
     /// - parameter id: A `Hashable` identifier associated to this view.
     /// - parameter replacement: An `AttributedString` serves as the replacement or `nil` if you don't want to create a replacement.
     /// - parameter content: A view builder that builds the content of the view.
-    public init(
-        id: some Hashable,
+    public init<ID: Hashable>(
+        id: ID,
         replacement: AttributedString? = nil,
         content: @escaping () -> Content
     ) {

@@ -12,9 +12,9 @@ import SwiftUI
 /// ``TextContent`` is typically produced by the ``TextContentBuilder`` result
 /// builder. You can also construct an instance manually to compose fragments or
 /// concatenate multiple values.
-public struct TextContent: Hashable {
+public struct TextContent {
     /// An individual piece of content that can be stored inside ``TextContent``.
-    public enum Fragment: Hashable {
+    public enum Fragment {
         /// A plain string fragment.
         case string(String)
         /// An attributed string fragment.
@@ -30,8 +30,10 @@ public struct TextContent: Hashable {
                 case .attributedString(let attributedString):
                     return attributedString
                 case .view(let attachment):
-                    let container = AttributeContainer()
-                        .inlineHostingAttachment(attachment)
+                    let container = try! AttributeContainer(
+                        [.inlineHostingAttachment : attachment],
+                        including: \.richText
+                    )
                     return AttributedString("\u{FFFC}", attributes: container)
             }
         }
