@@ -54,12 +54,17 @@ final class InlineAttachmentTextView: PlatformTextView {
     
     // TODO: It would be better to have a way to directly modify the copying item for each attachment. `NSItemProviderWriting` is not working here.
     override func copy(_ sender: Any?) {
-        guard let documentRange = textRange(from: beginningOfDocument, to: endOfDocument) else {
+        let rangeToCopy: UITextRange
+        if let selected = selectedTextRange, !selected.isEmpty {
+            rangeToCopy = selected
+        } else if let documentRange = textRange(from: beginningOfDocument, to: endOfDocument) {
+            rangeToCopy = documentRange
+        } else {
             super.copy(sender)
             return
         }
-        
-        let attributedString = attributedText(in: documentRange)
+
+        let attributedString = attributedText(in: rangeToCopy)
         UIPasteboard.general.setObjects([attributedString])
     }
     #endif
