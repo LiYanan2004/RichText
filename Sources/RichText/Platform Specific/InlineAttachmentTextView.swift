@@ -177,7 +177,7 @@ extension InlineAttachmentTextView {
                 oldAttachment.updateContent(from: attachment)
             }
             if didChangeIntrinsicContentSize {
-                invalidateTextLayout(at: NSRange(newRun.range, in: newAttrString))
+                _textStorage?.invalidateAttributes(in: NSRange(newRun.range, in: newAttrString))
             }
             
             mergedAttributedString[newRun.range].setAttributes(
