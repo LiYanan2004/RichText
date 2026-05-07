@@ -157,6 +157,7 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         textLayoutManager: NSTextLayoutManager?,
         location: any NSTextLocation
     ) {
+        self.richTextParentView = parentView
         super.init(
             textAttachment: textAttachment,
             parentView: parentView,
@@ -166,6 +167,7 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         tracksTextAttachmentViewBounds = true
     }
     
+    weak var richTextParentView: PlatformView?
     var hostingView: PlatformView?
     
     override func loadView() {

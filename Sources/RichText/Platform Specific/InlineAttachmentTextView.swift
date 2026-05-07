@@ -320,13 +320,25 @@ extension InlineAttachmentTextView {
                     continue
                 }
                 
+                let attachmentContainerView: PlatformView = {
+                    if let richTextProvider = textAttachmentViewProvider as? InlineHostingAttachmentViewProvider,
+                       let parentView = richTextProvider.richTextParentView {
+                        return parentView
+                    }
+                    return self
+                }()
+                
                 var frame = attachmentFrame
-                frame.origin.x += fragmentOrigin.x + textContainerOffset.x
-                frame.origin.y += fragmentOrigin.y + textContainerOffset.y
+                frame.origin.x += fragmentOrigin.x
+                frame.origin.y += fragmentOrigin.y
+                if attachmentContainerView === self {
+                    frame.origin.x += textContainerOffset.x
+                    frame.origin.y += textContainerOffset.y
+                }
                 attachmentView.frame = frame
                 
-                if attachmentView.superview !== self {
-                    addSubview(attachmentView)
+                if attachmentView.superview !== attachmentContainerView {
+                    attachmentContainerView.addSubview(attachmentView)
                 }
                 
                 let attachmentViewID = ObjectIdentifier(attachmentView)
