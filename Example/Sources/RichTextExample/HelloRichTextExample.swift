@@ -22,3 +22,7 @@ struct HelloRichTextExample: View {
         }
     }
 }
+
+#Preview {
+    HelloRichTextExample()
+}

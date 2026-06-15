@@ -37,7 +37,7 @@ enum TextAttributeConverter {
                 context.environment.fallbackPlatformFont
             }
             if let font {
-                attributes.merge(AttributeContainer([.font : font]))
+                attributes.merge(AttributeContainer([.font : font]), mergePolicy: .keepCurrent)
             }
             
             attributes.mergeParagraphStyle(mergePolicy: .keepCurrent) { paragraphStyle in
