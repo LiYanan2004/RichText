@@ -431,7 +431,8 @@ extension InlineAttachmentTextView {
             }
             
             let attachmentView = MainActor.assumeIsolated {
-                inlineHostingAttachment.hostingView
+                inlineHostingAttachment.attachmentsHostingTextView = self
+                return inlineHostingAttachment.hostingView
             }
             
             var frame = CGRect(origin: textContainerOffset, size: segmentFrame.size)
