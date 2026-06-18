@@ -17,6 +17,8 @@ struct _TextView_UIKit: UIViewRepresentable {
         let textView = InlineAttachmentTextView.textViewUsingTextLayoutManager()
         textView.backgroundColor = .clear
         textView.delegate = context.coordinator
+        textView.textDragDelegate = context.coordinator
+        context.coordinator.textView = textView
         
         textView.isEditable = false
         textView.isSelectable = true
@@ -57,7 +59,7 @@ struct _TextView_UIKit: UIViewRepresentable {
         )
     }
     
-    final class Coordinator: NSObject, UITextViewDelegate {
+    final class Coordinator: NSObject, UITextViewDelegate, UITextDragDelegate {
         var parent: _TextView_UIKit
         weak var textView: InlineAttachmentTextView?
         var editMenuInteraction: UIEditMenuInteraction?
@@ -66,6 +68,46 @@ struct _TextView_UIKit: UIViewRepresentable {
             self.parent = parent
         }
         
+        func textDraggableView(
+            _ textDraggableView: UIView & UITextDraggable,
+            itemsForDrag dragRequest: UITextDragRequest
+        ) -> [UIDragItem] {
+            guard let textView = textDraggableView as? InlineAttachmentTextView else {
+                return dragRequest.suggestedItems
+            }
+
+            return textView.containsInlineAttachment(in: dragRequest.dragRange)
+                ? []
+                : dragRequest.suggestedItems
+        }
+    }
+}
+
+private extension InlineAttachmentTextView {
+    func containsInlineAttachment(in textRange: UITextRange) -> Bool {
+        let rangeStart = offset(from: beginningOfDocument, to: textRange.start)
+        let rangeEnd = offset(from: beginningOfDocument, to: textRange.end)
+        guard rangeStart >= 0,
+              rangeEnd >= rangeStart else {
+            return false
+        }
+
+        let range = NSRange(location: rangeStart, length: rangeEnd - rangeStart)
+        guard range.length > 0,
+              NSMaxRange(range) <= attributedText.length else {
+            return false
+        }
+
+        var containsInlineAttachment = false
+        attributedText.enumerateAttributes(in: range) { attributes, _, stop in
+            if attributes[.inlineHostingAttachment] is InlineHostingAttachment ||
+                attributes[.attachment] is InlineHostingAttachment {
+                containsInlineAttachment = true
+                stop.pointee = true
+            }
+        }
+
+        return containsInlineAttachment
     }
 }
 #endif
