@@ -238,7 +238,7 @@ extension InlineAttachmentTextView {
         guard let textLayoutManager else { return bounds.height }
         
         textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
-
+        
         var maxY: CGFloat = 0
         textLayoutManager.enumerateTextSegments(
             in: textLayoutManager.documentRange,
@@ -258,12 +258,20 @@ extension InlineAttachmentTextView {
 // MARK: - Layout
 
 extension InlineAttachmentTextView {
+    func invalidateTextLayout(for attachment: InlineHostingAttachment) {
+        guard let attachmentRange = rangeOfInlineAttachment(attachment) else {
+            return
+        }
+        
+        invalidateTextLayout(at: attachmentRange)
+    }
+    
     func invalidateTextLayout(at range: NSRange) {
         guard let textLayoutManager,
               let textContentManager = textLayoutManager.textContentManager else {
             return
         }
-    
+        
         let textRange = NSTextRange(range, textContentManager: textContentManager)
         guard let textRange else { return }
         
@@ -274,6 +282,8 @@ extension InlineAttachmentTextView {
     }
     
     private func _invalidateTextLayout() {
+        invalidateIntrinsicContentSize()
+
         #if canImport(AppKit)
         needsLayout = true
         setNeedsDisplay(bounds)
@@ -283,6 +293,26 @@ extension InlineAttachmentTextView {
         #endif
     }
     
+    private func rangeOfInlineAttachment(_ attachment: InlineHostingAttachment) -> NSRange? {
+        guard let textStorage = _textContentStorage?.textStorage ?? _textStorage else {
+            return nil
+        }
+        
+        var attachmentRange: NSRange?
+        let fullRange = NSRange(location: 0, length: textStorage.length)
+        textStorage.enumerateAttribute(.attachment, in: fullRange) { value, range, stop in
+            guard let currentAttachment = value as? InlineHostingAttachment,
+                  currentAttachment == attachment else {
+                return
+            }
+            
+            attachmentRange = range
+            stop.pointee = true
+        }
+        
+        return attachmentRange
+    }
+
     #if canImport(AppKit)
     override func layout() {
         super.layout()
@@ -360,8 +390,9 @@ extension InlineAttachmentTextView {
             )
         }
         
-        for (attachmentViewID, attachmentView) in inlineAttachmentViews
-            where !visibleAttachmentViews.contains(attachmentViewID) {
+        for (attachmentViewID, attachmentView) in inlineAttachmentViews {
+            guard !visibleAttachmentViews.contains(attachmentViewID) else { continue }
+            
             attachmentView.removeFromSuperview()
             inlineAttachmentViews[attachmentViewID] = nil
         }
@@ -395,19 +426,19 @@ extension InlineAttachmentTextView {
                 return false
             }
             
-            guard let segmentFrame = firstFrame,
-                  !segmentFrame.isEmpty else {
+            guard let segmentFrame = firstFrame, !segmentFrame.isEmpty else {
                 return
             }
             
             let attachmentView = MainActor.assumeIsolated {
-                inlineHostingAttachment.hostingView
+                inlineHostingAttachment.attachmentsHostingTextView = self
+                return inlineHostingAttachment.hostingView
             }
             
-            var frame = CGRect(origin: textContainerOffset, size: attachmentView.intrinsicContentSize)
+            var frame = CGRect(origin: textContainerOffset, size: segmentFrame.size)
             frame.origin.x += segmentFrame.origin.x
             frame.origin.y += baseline + segmentFrame.minY
-            frame.origin.y -= inlineHostingAttachment.ascender ?? attachmentView.intrinsicContentSize.height
+            frame.origin.y -= inlineHostingAttachment.ascender ?? segmentFrame.height
             attachmentView.frame = frame
             
             if attachmentView.superview !== self {
