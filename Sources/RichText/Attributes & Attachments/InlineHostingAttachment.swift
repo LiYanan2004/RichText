@@ -15,14 +15,22 @@ import Introspection
 /// from TextKit layout geometry.
 final public class InlineHostingAttachment: NSTextAttachment {
     var rootView: AnyView
+    var sizing: HostedAttachmentSizing
     
     #if canImport(AppKit)
-    private var hostingViewStorage: NSHostingView<AnyView>?
+    private var hostingController: NSHostingController<AnyView>?
     #endif
     
     #if canImport(UIKit)
     private var hostingController: UIHostingController<AnyView>?
     #endif
+    
+    @MainActor
+    private var isMeasuringAttachmentBounds = false
+    @MainActor
+    private var isTextLayoutInvalidationScheduled = false
+    @MainActor
+    unowned var attachmentsHostingTextView: InlineAttachmentTextView?
     
     /// The identity of the view.
     ///
@@ -61,6 +69,7 @@ final public class InlineHostingAttachment: NSTextAttachment {
     override init(data contentData: Data?, ofType uti: String?) {
         self.id = UUID()
         self.rootView = AnyView(EmptyView())
+        self.sizing = .intrinsic
         
         super.init(data: contentData, ofType: uti)
         self.allowsTextAttachmentView = true
@@ -70,21 +79,22 @@ final public class InlineHostingAttachment: NSTextAttachment {
     init(
         _ content: some View,
         id: AnyHashable? = nil,
-        replacement: AttributedString?
+        replacement: AttributedString?,
+        sizing: HostedAttachmentSizing = .intrinsic
     ) {
         self.rootView = AnyView(content)
         self.replacement = replacement
-
+        self.sizing = sizing
+        
         if let id {
             self.id = AnyHashable(id)
         } else {
             self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
         }
-
+        
         super.init(data: nil, ofType: nil)
         self.allowsTextAttachmentView = true
     }
-
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -102,115 +112,106 @@ final public class InlineHostingAttachment: NSTextAttachment {
             location: location
         )
     }
-
+    
     var ascender: CGFloat?
+    
+    @MainActor
+    private var hostingRootView: AnyView {
+        AnyView(
+            self.rootView.onGeometryChange(for: CGSize.self, of: \.size) { [weak self] _ in
+                self?.hostedViewSizeDidChange()
+            }
+        )
+    }
     
     @MainActor
     lazy var hostingView: PlatformView = {
         #if canImport(AppKit)
-        let hostingView = NSHostingView(rootView: rootView)
-        hostingView.sizingOptions = .intrinsicContentSize
-        self.hostingViewStorage = hostingView
-        return hostingView
+        let hostingController = NSHostingController(rootView: hostingRootView)
+        hostingController.sizingOptions = .intrinsicContentSize
+        self.hostingController = hostingController
+        return hostingController.view
         #elseif canImport(UIKit)
-        let hostingController = UIHostingController(rootView: rootView)
+        let hostingController = UIHostingController(rootView: hostingRootView)
         hostingController.view.backgroundColor = .clear
         self.hostingController = hostingController
         return hostingController.view!
         #endif
     }()
-    
+
     @MainActor
     func updateContent(from attachment: InlineHostingAttachment) -> Bool {
+        let view = hostingView
+        let previousIntrinsicContentSize = view.intrinsicContentSize
+        let previousSizing = sizing
+
         self.rootView = attachment.rootView
         self.replacement = attachment.replacement
-        
-        let view = hostingView
-        let previousSize = view.intrinsicContentSize
-        
+        self.sizing = attachment.sizing
+
         #if canImport(AppKit)
-        hostingViewStorage?.rootView = rootView
-        let updatedSize = view.intrinsicContentSize
-        return previousSize != updatedSize
+        hostingController?.rootView = hostingRootView
         #elseif canImport(UIKit)
-        hostingController?.rootView = rootView
-        let updatedSize = view.intrinsicContentSize
-        return previousSize != updatedSize
+        hostingController?.rootView = hostingRootView
         #endif
+
+        if case .intrinsic = previousSizing,
+           case .intrinsic = sizing {
+            return previousIntrinsicContentSize != view.intrinsicContentSize
+        }
+        
+        return true
+    }
+
+    @MainActor
+    func sizeThatFits(
+        lineFragmentWidth: CGFloat,
+        intrinsicContentSize: CGSize
+    ) -> CGSize {
+        isMeasuringAttachmentBounds = true
+        defer { isMeasuringAttachmentBounds = false }
+
+        let measuredSize: CGSize
+        switch sizing {
+            case .intrinsic:
+                measuredSize = intrinsicContentSize
+            case .fittingLineFragment:
+                let proposedSize = CGSize(
+                    width: max(0, lineFragmentWidth),
+                    height: .greatestFiniteMagnitude
+                )
+                measuredSize = hostingController?.sizeThatFits(in: proposedSize) ?? intrinsicContentSize
+        }
+
+        return measuredSize
+    }
+
+    @MainActor
+    private func hostedViewSizeDidChange() {
+        guard let attachmentsHostingTextView else { return }
+        guard !isMeasuringAttachmentBounds else { return }
+
+        scheduleTextLayoutInvalidation(textView: attachmentsHostingTextView)
+    }
+
+    @MainActor
+    private func scheduleTextLayoutInvalidation(textView: InlineAttachmentTextView) {
+        guard !isTextLayoutInvalidationScheduled else { return }
+
+        isTextLayoutInvalidationScheduled = true
+        DispatchQueue.main.async { [weak self, weak textView] in
+            guard let self else { return }
+
+            MainActor.assumeIsolated {
+                self.isTextLayoutInvalidationScheduled = false
+                textView?.invalidateTextLayout(for: self)
+            }
+        }
     }
 }
 
 extension InlineHostingAttachment {
     static func == (lhs: InlineHostingAttachment, rhs: InlineHostingAttachment) -> Bool {
         lhs.id == rhs.id
-    }
-}
-
-final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
-    var inlineHostingAttachment: InlineHostingAttachment! {
-        self.textAttachment as? InlineHostingAttachment
-    }
-    
-    override init(
-        textAttachment: NSTextAttachment,
-        parentView: PlatformView?,
-        textLayoutManager: NSTextLayoutManager?,
-        location: any NSTextLocation
-    ) {
-        self.richTextParentView = parentView
-        super.init(
-            textAttachment: textAttachment,
-            parentView: parentView,
-            textLayoutManager: textLayoutManager,
-            location: location
-        )
-        tracksTextAttachmentViewBounds = true
-    }
-    
-    weak var richTextParentView: PlatformView?
-    var hostingView: PlatformView?
-    
-    override func loadView() {
-        view = makeHostingView()
-    }
-    
-    private func makeHostingView() -> PlatformView {
-        nonisolated(unsafe) let attachment = self.inlineHostingAttachment!
-        
-        let hostingView = MainActor.assumeIsolated {
-            attachment.hostingView
-        }
-        self.hostingView = hostingView
-        return hostingView
-    }
-    
-    override func attachmentBounds(
-        for attributes: [NSAttributedString.Key: Any],
-        location: any NSTextLocation,
-        textContainer: NSTextContainer?,
-        proposedLineFragment: CGRect,
-        position: CGPoint
-    ) -> CGRect {
-        guard let view else { return .zero }
-        let size = MainActor.assumeIsolated {
-            view.intrinsicContentSize
-        }
-        
-        var origin = CGPoint.zero
-        if let font = attributes[.font] as? PlatformFont {
-            origin.y = _descentFactor(font) * size.height * -1
-            inlineHostingAttachment.ascender = size.height + origin.y
-        }
-        
-        return CGRect(origin: origin, size: size)
-    }
-    
-    @inlinable func _descentFactor(_ font: PlatformFont?) -> CGFloat {
-        guard let font else {
-            return 0.2 // reserve 20% as descent by default.
-        }
-        
-        let lineHeight = abs(font.ascender) + abs(font.descender)
-        return abs(font.descender) / lineHeight
     }
 }
