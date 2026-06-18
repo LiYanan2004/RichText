@@ -31,24 +31,15 @@ struct ContentView: View {
                     Button("Controls", systemImage: "slider.horizontal.3") {
                         isPresentingControls = true
                     }
-                }
-            }
-            .sheet(isPresented: $isPresentingControls) {
-                NavigationStack {
-                    Form {
-                        PlaygroundControlsView(configuration: $configuration)
-                    }
-                    .navigationTitle("Controls")
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") {
-                                isPresentingControls = false
-                            }
+                    .popover(isPresented: $isPresentingControls) {
+                        Form {
+                            PlaygroundControlsView(configuration: $configuration)
                         }
+                        .formStyle(.grouped)
+                        .presentationDetents([.medium])
+                        .presentationDragIndicator(.visible)
                     }
                 }
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
             }
         }
     }
