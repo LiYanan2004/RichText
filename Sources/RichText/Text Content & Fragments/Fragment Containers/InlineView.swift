@@ -84,12 +84,12 @@ public struct InlineView<Content: View>: TextContentProviding {
 extension InlineView {
     /// Creates an instance with the given string and parses it as Markdown, or falls back to a plain string.
     ///
-    /// If you want to use plain string as replacement, use ``init(string:content:)``.
+    /// If you want to use plain string as replacement, use ``init(string:sizing:content:)``.
     ///
     /// - parameter replacement: A `String` value that is parsed as Markdown and converted into `AttributedString`, or `nil` if you don't want to create a replacement.
     /// - parameter sizing: A sizing policy for the hosted attachment.
     /// - parameter content: A view builder that builds the content of the view.
-    /// - SeeAlso: ``init(string:content:)``
+    /// - SeeAlso: ``init(string:sizing:content:)``
     public init(
         _ replacement: String? = nil,
         sizing: HostedAttachmentSizing = .intrinsic,
@@ -116,7 +116,7 @@ extension InlineView {
     
     /// Creates an instance with the given string.
     ///
-    /// - parameter replacement: A `String` serves as the replacement, or `nil` if you don't want to create a replacement.
+    /// - parameter string: A `String` serves as the replacement, or `nil` if you don't want to create a replacement.
     /// - parameter sizing: A sizing policy for the hosted attachment.
     /// - parameter content: A view builder that builds the content of the view.
     public init(

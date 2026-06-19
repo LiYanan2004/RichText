@@ -26,7 +26,7 @@ SwiftUI offers the `.textSelection(.enabled)` view modifier to enable text selec
     }
 
     @Tab("Rich Text") {
-        ``TextView`` preserves the experience on macOS and improves it on iOS, so you can:
+        ``RichText/TextView`` preserves the experience on macOS and improves it on iOS, so you can:
         - Select partial ranges of text
         - Trigger more actions (for example, Translate, Lookup, and Search) in the edit menu
         
@@ -37,10 +37,10 @@ SwiftUI offers the `.textSelection(.enabled)` view modifier to enable text selec
 ### Adopting Text View
 
 RichText offers convenience initializers so you can replace `Text` with `TextView` and get improved selection behavior:
-- ``TextView/init(_:tableName:bundle:comment:)``
-- ``TextView/init(verbatim:)``
-- ``TextView/init(_:)-(S)``
-- ``TextView/init(_:)-(AttributedString)``
-- ``TextView/init(_:)-(LocalizedStringResource)``
+- ``RichText/TextView/init(_:tableName:bundle:comment:)``
+- ``RichText/TextView/init(verbatim:)``
+- ``RichText/TextView/init(_:)-(S)``
+- ``RichText/TextView/init(_:)-(AttributedString)``
+- ``RichText/TextView/init(_:)-(LocalizedStringResource)``
 
-> Note: These initializers do not support view embedding. If you want to embed a view, use ``TextView/init(content:)`` instead.
+> Note: These initializers do not support view embedding. If you want to embed a view, use ``RichText/TextView/init(content:)`` instead.
