@@ -30,7 +30,7 @@ final public class InlineHostingAttachment: NSTextAttachment {
     @MainActor
     private var isTextLayoutInvalidationScheduled = false
     @MainActor
-    unowned var attachmentsHostingTextView: InlineAttachmentTextView?
+    weak var attachmentsHostingTextView: InlineAttachmentTextView?
     
     /// The identity of the view.
     ///
@@ -70,7 +70,7 @@ final public class InlineHostingAttachment: NSTextAttachment {
         self.id = UUID()
         self.rootView = AnyView(EmptyView())
         self.sizing = .intrinsic
-        
+
         super.init(data: contentData, ofType: uti)
         self.allowsTextAttachmentView = true
     }
@@ -85,13 +85,13 @@ final public class InlineHostingAttachment: NSTextAttachment {
         self.rootView = AnyView(content)
         self.replacement = replacement
         self.sizing = sizing
-        
+
         if let id {
             self.id = AnyHashable(id)
         } else {
             self.id = ViewIdentity.explicit(content) ?? AnyHashable(UUID())
         }
-        
+
         super.init(data: nil, ofType: nil)
         self.allowsTextAttachmentView = true
     }
@@ -111,6 +111,45 @@ final public class InlineHostingAttachment: NSTextAttachment {
             textLayoutManager: textContainer?.textLayoutManager,
             location: location
         )
+    }
+    
+    public override func image(
+        forBounds imageBounds: CGRect,
+        textContainer: NSTextContainer?,
+        characterIndex charIndex: Int
+    ) -> PlatformImage? {
+        nil
+    }
+    
+    public override func attachmentBounds(
+        for textContainer: NSTextContainer?,
+        proposedLineFragment lineFragment: CGRect,
+        glyphPosition position: CGPoint,
+        characterIndex: Int
+    ) -> CGRect {
+        // TextKit 1 requests layout bounds directly from the attachment.
+        let font: PlatformFont? = {
+            guard textContainer?.textLayoutManager == nil,
+                  let textStorage = textContainer?.layoutManager?.textStorage,
+                  characterIndex < textStorage.length else {
+                return nil
+            }
+            return textStorage.attribute(
+                .font,
+                at: characterIndex,
+                effectiveRange: nil
+            ) as? PlatformFont
+        }()
+
+        let baselineDescentRatio = Self.baselineDescentRatio(for: font)
+        nonisolated(unsafe) let attachment = self
+        return MainActor.assumeIsolated {
+            attachment.layoutBounds(
+                lineFragmentWidth: lineFragment.width,
+                intrinsicContentSize: attachment.hostingView.intrinsicContentSize,
+                baselineDescentRatio: baselineDescentRatio
+            )
+        }
     }
     
     var ascender: CGFloat?
@@ -187,6 +226,29 @@ final public class InlineHostingAttachment: NSTextAttachment {
     }
 
     @MainActor
+    func layoutBounds(
+        lineFragmentWidth: CGFloat,
+        intrinsicContentSize: CGSize,
+        baselineDescentRatio: CGFloat
+    ) -> CGRect {
+        let measuredSize = sizeThatFits(
+            lineFragmentWidth: lineFragmentWidth,
+            intrinsicContentSize: intrinsicContentSize
+        )
+        let attachmentSize = CGSize(
+            width: measuredSize.width.isFinite ? measuredSize.width : 0,
+            height: measuredSize.height.isFinite ? measuredSize.height : 0
+        )
+        let origin = CGPoint(
+            x: 0,
+            y: -baselineDescentRatio * attachmentSize.height
+        )
+
+        ascender = attachmentSize.height + origin.y
+        return CGRect(origin: origin, size: attachmentSize)
+    }
+
+    @MainActor
     private func hostedViewSizeDidChange() {
         guard let attachmentsHostingTextView else { return }
         guard !isMeasuringAttachmentBounds else { return }
@@ -207,6 +269,14 @@ final public class InlineHostingAttachment: NSTextAttachment {
                 textView?.invalidateTextLayout(for: self)
             }
         }
+    }
+
+    static func baselineDescentRatio(for font: PlatformFont?) -> CGFloat {
+        guard let font else { return 0.2 }
+
+        let lineHeight = abs(font.ascender) + abs(font.descender)
+        guard lineHeight > 0 else { return 0.2 }
+        return abs(font.descender) / lineHeight
     }
 }
 

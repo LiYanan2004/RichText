@@ -4,8 +4,6 @@
 
 A supplementary TextView for SwiftUI that provides better text selection experience, as well as enabling native view embedding using declarative syntax.
 
-Powered by **TextKit 2**.
-
 ## Requirements
 
 - Xcode 26.0+

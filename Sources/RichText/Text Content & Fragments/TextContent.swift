@@ -22,7 +22,6 @@ public struct TextContent {
         /// An inline SwiftUI view attachment.
         case view(InlineHostingAttachment)
         
-        @MainActor
         public func asAttributedString() -> AttributedString {
             switch self {
                 case .string(let string):
@@ -73,22 +72,25 @@ public struct TextContent {
     /// On earlier systems, use `PlatformFont` rather than `SwiftUI.Font` when creating `AttributedString`
     /// since the text view is backed by platform view, `SwiftUI.Font` is not respected.
     ///
-    /// - Parameter context: The context of the platform view representable that contains environment values.
-    @MainActor
-    func attributedString<Representable: ViewRepresentable>(
-        context: RepresentableContext<Representable>
-    ) -> AttributedString {
+    /// - Parameter environmentValues: The environment values used to render the text.
+    public func attributedString(environmentValues: EnvironmentValues) -> AttributedString {
+        attributedString(
+            configuration: TextViewRenderConfiguration(environmentValues: environmentValues)
+        )
+    }
+
+    func attributedString(configuration: TextViewRenderConfiguration) -> AttributedString {
         var attributedString = fragments.reduce(into: AttributedString()) { result, fragment in
             result += fragment.asAttributedString()
         }
         
         attributedString = TextAttributeConverter.mergingEnvironmentValuesIntoAttributedString(
             attributedString,
-            context: context
+            configuration: configuration
         )
         attributedString = TextAttributeConverter.convertingAndMergingSwiftUIAttributesIntoAttributedString(
             attributedString,
-            context: context
+            configuration: configuration
         )
         
         attributedString = TextAttributeConverter.resolveInlinePresentationIntent(in: attributedString)

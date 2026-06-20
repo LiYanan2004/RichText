@@ -18,46 +18,36 @@ typealias RepresentableContext = UIViewRepresentableContext
 typealias PlatformColor = UIColor
 #endif
 
-@MainActor
 enum TextAttributeConverter {
-    static func mergingEnvironmentValuesIntoAttributedString<Representable: ViewRepresentable>(
+    static func mergingEnvironmentValuesIntoAttributedString(
         _ attributedString: AttributedString,
-        context: RepresentableContext<Representable>
+        configuration: TextViewRenderConfiguration
     ) -> AttributedString {
         var attributedString = attributedString
         
         for run in attributedString.runs {
             var attributes = run.attributes
             
-            let font: PlatformFont? = if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-                (context.environment.font ?? .default)
-                    .resolve(in: context.environment.fontResolutionContext)
-                    .ctFont as PlatformFont
-            } else {
-                context.environment.fallbackPlatformFont
-            }
-            if let font {
-                attributes.merge(AttributeContainer([.font : font]), mergePolicy: .keepCurrent)
+            if let defaultFont = configuration.defaultFont {
+                attributes.merge(AttributeContainer([.font : defaultFont]), mergePolicy: .keepCurrent)
             }
             
             attributes.mergeParagraphStyle(mergePolicy: .keepCurrent) { paragraphStyle in
                 paragraphStyle.alignment = NSTextAlignment(
-                    context.environment.multilineTextAlignment,
-                    layoutDirection: context.environment.layoutDirection
+                    configuration.multilineTextAlignment,
+                    layoutDirection: configuration.layoutDirection
                 )
-                paragraphStyle.lineSpacing = context.environment.lineSpacing
-                paragraphStyle.allowsDefaultTighteningForTruncation = context.environment.allowsTightening
-                paragraphStyle.baseWritingDirection = NSWritingDirection(context.environment.layoutDirection)
+                paragraphStyle.lineSpacing = configuration.lineSpacing
+                paragraphStyle.allowsDefaultTighteningForTruncation = configuration.allowsTightening
+                paragraphStyle.baseWritingDirection = NSWritingDirection(configuration.layoutDirection)
                 paragraphStyle.lineBreakMode = NSLineBreakMode(
-                    context.environment.truncationMode,
-                    lineLimit: context.environment.lineLimit
+                    configuration.truncationMode,
+                    lineLimit: configuration.lineLimit
                 )
-                if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
-                   let lineHeight = context.environment.lineHeight {
-                    let (min, max, multiple) = lineHeight._lineSetting(font: font)
-                    paragraphStyle.minimumLineHeight = min
-                    paragraphStyle.maximumLineHeight = max
-                    paragraphStyle.lineHeightMultiple = multiple
+                if let lineHeightSetting = configuration.lineHeightSetting {
+                    paragraphStyle.minimumLineHeight = lineHeightSetting.minimum
+                    paragraphStyle.maximumLineHeight = lineHeightSetting.maximum
+                    paragraphStyle.lineHeightMultiple = lineHeightSetting.multiple
                 }
             }
             
@@ -67,9 +57,9 @@ enum TextAttributeConverter {
         return attributedString
     }
     
-    static func convertingAndMergingSwiftUIAttributesIntoAttributedString<Representable: ViewRepresentable>(
+    static func convertingAndMergingSwiftUIAttributesIntoAttributedString(
         _ attributedString: AttributedString,
-        context: RepresentableContext<Representable>
+        configuration: TextViewRenderConfiguration
     ) -> AttributedString {
         var attributedString = attributedString
         
@@ -81,7 +71,7 @@ enum TextAttributeConverter {
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
                let font = swiftUIAttributes.font {
                 let platformFont = font
-                    .resolve(in: context.environment.fontResolutionContext)
+                    .resolve(in: configuration.fontResolutionContext)
                     .ctFont as PlatformFont
                 convertedAttributes[.font] = platformFont
             }
@@ -109,13 +99,13 @@ enum TextAttributeConverter {
             )
             if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *),
                let lineHeight = swiftUIAttributes.lineHeight {
+                let lineHeightSetting = lineHeight._richTextLineHeightSetting(
+                    font: convertedAttributes[.font] as? PlatformFont
+                )
                 attributes.mergeParagraphStyle(mergePolicy: .keepCurrent) { paragraphStyle in
-                    let (min, max, multiple) = lineHeight._lineSetting(
-                        font: convertedAttributes[.font] as? PlatformFont
-                    )
-                    paragraphStyle.minimumLineHeight = min
-                    paragraphStyle.maximumLineHeight = max
-                    paragraphStyle.lineHeightMultiple = multiple
+                    paragraphStyle.minimumLineHeight = lineHeightSetting.minimum
+                    paragraphStyle.maximumLineHeight = lineHeightSetting.maximum
+                    paragraphStyle.lineHeightMultiple = lineHeightSetting.multiple
                 }
             }
             
@@ -156,35 +146,36 @@ enum TextAttributeConverter {
         return attributedString
     }
     
-    static func mergeEnvironmentValueIntoTextView<Representable: ViewRepresentable>(
+    @MainActor
+    static func mergeRenderConfigurationIntoTextView(
         _ textView: PlatformTextView,
-        context: RepresentableContext<Representable>
+        configuration: TextViewRenderConfiguration
     ) {
         #if canImport(AppKit)
-        textView.baseWritingDirection = NSWritingDirection(context.environment.layoutDirection)
+        textView.baseWritingDirection = NSWritingDirection(configuration.layoutDirection)
         textView.alignment = NSTextAlignment(
-            context.environment.multilineTextAlignment,
-            layoutDirection: context.environment.layoutDirection
+            configuration.multilineTextAlignment,
+            layoutDirection: configuration.layoutDirection
         )
-        textView.isAutomaticSpellingCorrectionEnabled = !context.environment.autocorrectionDisabled
+        textView.isAutomaticSpellingCorrectionEnabled = !configuration.isAutocorrectionDisabled
         #elseif canImport(UIKit)
         /* UITextView does not respect to any properties set to that view since its backed storage is an `AttributedString` */
         #endif
         
         let textContainer: NSTextContainer? = textView.textContainer
         if let textContainer {
-            updateTextContainer(textContainer, context: context)
+            updateTextContainer(textContainer, configuration: configuration)
         }
     }
     
-    static private func updateTextContainer<Representable: ViewRepresentable>(
+    private static func updateTextContainer(
         _ textContainer: NSTextContainer,
-        context: RepresentableContext<Representable>
+        configuration: TextViewRenderConfiguration
     ) {
-        let lineLimit = context.environment.lineLimit ?? 0
+        let lineLimit = configuration.lineLimit ?? 0
         textContainer.maximumNumberOfLines = lineLimit
         textContainer.lineBreakMode = NSLineBreakMode(
-            context.environment.truncationMode,
+            configuration.truncationMode,
             lineLimit: lineLimit
         )
     }
@@ -230,112 +221,5 @@ fileprivate extension CTFont {
         }
         
         return resolvedFont
-    }
-}
-
-fileprivate extension NSLineBreakMode {
-    init(_ truncationMode: Text.TruncationMode, lineLimit: Int?) {
-        let lineLimit = lineLimit ?? 0
-        guard lineLimit > 0 else {
-            self = .byWordWrapping
-            return
-        }
-        
-        switch truncationMode {
-            case .head:
-                self = .byTruncatingHead
-            case .tail:
-                self = .byTruncatingTail
-            case .middle:
-                self = .byTruncatingMiddle
-            @unknown default:
-                self = .byTruncatingTail
-        }
-    }
-}
-
-fileprivate extension Text.LineStyle {
-    var color: Color? {
-        return Mirror(reflecting: self).descendant("color") as? Color
-    }
-}
-
-fileprivate extension NSTextAlignment {
-    init(_ textAlignment: TextAlignment, layoutDirection: LayoutDirection) {
-        switch textAlignment {
-            case .leading:
-                self = layoutDirection == .leftToRight ? .left : .right
-            case .trailing:
-                self = layoutDirection == .leftToRight ? .right : .left
-            case .center:
-                self = .center
-            @unknown default:
-                self = .center
-        }
-    }
-}
-
-fileprivate extension NSWritingDirection {
-    init(_ layoutDirection: LayoutDirection) {
-        switch layoutDirection {
-            case .leftToRight:
-                self = .leftToRight
-            case .rightToLeft:
-                self = .rightToLeft
-            @unknown default:
-                self = .natural
-        }
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *)
-fileprivate extension AttributedString.LineHeight {
-    func _lineSetting(font: PlatformFont?) -> (min: CGFloat, max: CGFloat, multiple: CGFloat) {
-        let decoded = try? JSONDecoder().decode(
-            _LineHeight.self,
-            from: JSONEncoder().encode(self)
-        )
-        guard let decoded else { return (.zero, .zero, .zero) }
-        
-        var min: CGFloat = 0
-        var max: CGFloat = 0
-        var multiple: CGFloat = 0
-        if let multipleFactor = decoded.baselineInterval.multiple?.factor {
-            multiple = multipleFactor
-        } else if let exactHeight = decoded.baselineInterval.exact?.points {
-            min = exactHeight
-            max = exactHeight
-        } else if let increase = decoded.baselineInterval.leading?.increase, let font {
-            let base = font.pointSize
-            min = base + increase
-            max = base + increase
-        }
-        
-        return (min, max, multiple)
-    }
-    
-    struct _LineHeight: Decodable {
-        let baselineInterval: BaselineInterval
-        
-        struct BaselineInterval: Decodable {
-            let multiple: Multiple?
-            let variable: Variable?
-            let exact: Exact?
-            let leading: Leading?
-            
-            struct Multiple: Decodable {
-                let factor: Double
-            }
-            
-            struct Exact: Decodable {
-                let points: Double
-            }
-            
-            struct Variable: Decodable { }
-            
-            struct Leading: Decodable {
-                let increase: Double
-            }
-        }
     }
 }

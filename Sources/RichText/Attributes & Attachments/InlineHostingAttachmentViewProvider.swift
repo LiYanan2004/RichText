@@ -8,7 +8,7 @@
 import SwiftUI
 
 final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
-    var inlineHostingAttachment: InlineHostingAttachment! {
+    private var inlineHostingAttachment: InlineHostingAttachment? {
         self.textAttachment as? InlineHostingAttachment
     }
 
@@ -30,7 +30,6 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
     }
 
     weak var richTextParentView: PlatformView?
-    var hostingView: PlatformView?
 
     override func loadView() {
         super.loadView()
@@ -38,7 +37,10 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
     }
 
     private func makeHostingView() -> PlatformView {
-        nonisolated(unsafe) let attachment = self.inlineHostingAttachment!
+        guard let inlineHostingAttachment else {
+            preconditionFailure("InlineHostingAttachmentViewProvider requires an InlineHostingAttachment.")
+        }
+        nonisolated(unsafe) let attachment = inlineHostingAttachment
         
         // link hosting attachment with the parent text view for size-driven view invalidation.
         let attachmentHostingTextView = richTextParentView as? InlineAttachmentTextView
@@ -49,8 +51,6 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         let hostingView = MainActor.assumeIsolated {
             attachment.hostingView
         }
-        self.hostingView = hostingView
-        
         return hostingView
     }
 
@@ -61,36 +61,18 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         proposedLineFragment: CGRect,
         position: CGPoint
     ) -> CGRect {
-        guard let view else { return .zero }
+        // TextKit 2 requests layout bounds from the attachment view provider.
+        guard let view, let inlineHostingAttachment else { return .zero }
 
-        nonisolated(unsafe) let attachment = self.inlineHostingAttachment!
-        let size = MainActor.assumeIsolated {
-            attachment.sizeThatFits(
+        let font = attributes[.font] as? PlatformFont
+        let baselineDescentRatio = InlineHostingAttachment.baselineDescentRatio(for: font)
+        nonisolated(unsafe) let attachment = inlineHostingAttachment
+        return MainActor.assumeIsolated {
+            attachment.layoutBounds(
                 lineFragmentWidth: proposedLineFragment.width,
-                intrinsicContentSize: view.intrinsicContentSize
+                intrinsicContentSize: view.intrinsicContentSize,
+                baselineDescentRatio: baselineDescentRatio
             )
         }
-
-        let attachmentSize = CGSize(
-            width: size.width.isFinite ? size.width : 0,
-            height: size.height.isFinite ? size.height : 0
-        )
-
-        var origin = CGPoint.zero
-        if let font = attributes[.font] as? PlatformFont {
-            origin.y = _descentFactor(font) * attachmentSize.height * -1
-            attachment.ascender = attachmentSize.height + origin.y
-        }
-
-        return CGRect(origin: origin, size: attachmentSize)
-    }
-
-    @inlinable func _descentFactor(_ font: PlatformFont?) -> CGFloat {
-        guard let font else {
-            return 0.2 // reserve 20% as descent by default.
-        }
-
-        let lineHeight = abs(font.ascender) + abs(font.descender)
-        return abs(font.descender) / lineHeight
     }
 }
