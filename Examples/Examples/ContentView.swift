@@ -29,6 +29,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
+            .defaultScrollAnchor(.bottom)
             .navigationTitle("RichText Playground")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -75,24 +76,15 @@ struct ContentView: View {
         streamedContent = ""
         isStreaming = true
 
-        streamingTask = Task { @MainActor in
-            let source = ExampleMarkdown.showcase
-            var currentIndex = source.startIndex
-
-            while currentIndex < source.endIndex {
-                let nextIndex = source.index(
-                    currentIndex,
-                    offsetBy: 12,
-                    limitedBy: source.endIndex
-                ) ?? source.endIndex
-                streamedContent.append(contentsOf: source[currentIndex..<nextIndex])
-                currentIndex = nextIndex
-
-                do {
-                    try await Task.sleep(for: .milliseconds(16))
-                } catch {
-                    return
+        streamingTask = Task {
+            for char in ExampleMarkdown.showcase {
+                streamedContent += String(char)
+                
+                if Task.isCancelled {
+                    break
                 }
+                
+                try? await Task.sleep(for: .milliseconds(1))
             }
 
             isStreaming = false
