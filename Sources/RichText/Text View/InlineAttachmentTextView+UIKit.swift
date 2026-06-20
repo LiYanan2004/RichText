@@ -10,6 +10,15 @@
 import UIKit
 
 extension InlineAttachmentTextView {
+    // UIKit’s inherited UITextView(usingTextLayoutManager:) factory bypassed Swift stored-property initialization, causing Dictionary.makeIterator() to access null storage.
+    convenience init(usingTextLayoutManager: Bool) {
+        self.init(frame: .zero, textContainer: nil)
+        
+        if !usingTextLayoutManager {
+            _ = layoutManager // maunally fallback to TextKit 1
+        }
+    }
+    
     var textContainerOffset: CGPoint {
         CGPoint(
             x: textContainerInset.left,
