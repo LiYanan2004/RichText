@@ -10,6 +10,7 @@ struct RichTextPlaygroundView: View {
     let configuration: PlaygroundConfiguration
     @Binding var isInlineToggleEnabled: Bool
     @Binding var rating: Int
+    let streamedContent: String
     let resetAction: () -> Void
 
     var body: some View {
@@ -81,6 +82,11 @@ struct RichTextPlaygroundView: View {
                     isHighlighted: isInlineToggleEnabled
                 )
             }
+
+            if !streamedContent.isEmpty {
+                LineBreak(2)
+                styledText(streamedContent)
+            }
         }
         .font(PlatformFont.systemFont(ofSize: CGFloat(configuration.fontSize)))
         .lineSpacing(CGFloat(configuration.lineSpacing))
@@ -126,6 +132,7 @@ struct RichTextPlaygroundView: View {
             configuration: .defaultValue,
             isInlineToggleEnabled: $isInlineToggleEnabled,
             rating: $rating,
+            streamedContent: ExampleMarkdown.showcase,
             resetAction: { }
         )
         .padding()
