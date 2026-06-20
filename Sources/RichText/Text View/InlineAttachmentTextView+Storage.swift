@@ -35,17 +35,7 @@ extension InlineAttachmentTextView {
     }
     
     private func updateStorageContentsWithoutTransaction(attributedString: NSAttributedString) {
-        if let textContentStorage = _textContentStorage {
-            // TK2 path: update the concrete content storage directly.
-            textContentStorage.attributedString = attributedString
-        } else if let textLayoutManager {
-            // TK2 path: update through NSTextLayoutManager when no content storage exists.
-            textLayoutManager.replaceContents(
-                in: textLayoutManager.documentRange,
-                with: attributedString
-            )
-        } else if let textStorage = _textStorage {
-            // TK1 path: update the legacy NSTextStorage contents.
+        if let textStorage = _textContentStorage?.textStorage ?? _textStorage {
             if appendNewSuffixIfPossible(
                 from: attributedString,
                 to: textStorage
@@ -53,6 +43,12 @@ extension InlineAttachmentTextView {
                 return
             }
             textStorage.setAttributedString(attributedString)
+        } else if let textLayoutManager {
+            // TK2 path: update through NSTextLayoutManager when no content storage exists.
+            textLayoutManager.replaceContents(
+                in: textLayoutManager.documentRange,
+                with: attributedString
+            )
         }
     }
     
