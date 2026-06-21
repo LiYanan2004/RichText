@@ -14,7 +14,9 @@ struct _TextView_UIKit: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     func makeUIView(context: Context) -> InlineAttachmentTextView {
-        let textView = InlineAttachmentTextView.textViewUsingTextLayoutManager()
+        let textView = InlineAttachmentTextView(
+            usingTextLayoutManager: context.environment.usesTextLayoutManager
+        )
         textView.backgroundColor = .clear
         textView.delegate = context.coordinator
         textView.textDragDelegate = context.coordinator
@@ -32,11 +34,16 @@ struct _TextView_UIKit: UIViewRepresentable {
     }
     
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
-        TextAttributeConverter.mergeEnvironmentValueIntoTextView(
+        context.coordinator.parent = self
+
+        let configuration = TextViewRenderConfiguration(context: context)
+        TextAttributeConverter.mergeRenderConfigurationIntoTextView(
             textView,
-            context: context
+            configuration: configuration
         )
-        textView.applyAttributedString(content.attributedString(context: context))
+        textView.applyAttributedStringPreservingAttachments(
+            content.attributedString(configuration: configuration)
+        )
     }
     
     // For UITextView, it comes with a UIScrollView
@@ -76,9 +83,11 @@ struct _TextView_UIKit: UIViewRepresentable {
                 return dragRequest.suggestedItems
             }
 
-            return textView.containsInlineAttachment(in: dragRequest.dragRange)
-                ? []
-                : dragRequest.suggestedItems
+            if textView.containsInlineAttachment(in: dragRequest.dragRange) {
+                return []
+            } else {
+                return dragRequest.suggestedItems
+            }
         }
     }
 }
