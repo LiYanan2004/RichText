@@ -157,9 +157,11 @@ final public class InlineHostingAttachment: NSTextAttachment {
     @MainActor
     private var hostingRootView: AnyView {
         AnyView(
-            self.rootView.onGeometryChange(for: CGSize.self, of: \.size) { [weak self] _ in
-                self?.hostedViewSizeDidChange()
-            }
+            self.rootView
+                .ignoresSafeArea() // Resolves TextKit 1 bug. Make sure to recalculate attachment sizes after the iOS screen size changes.
+                .onGeometryChange(for: CGSize.self, of: \.size) { [weak self] _ in
+                    self?.hostedViewSizeDidChange()
+                }
         )
     }
     
