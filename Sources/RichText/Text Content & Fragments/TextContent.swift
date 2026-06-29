@@ -9,9 +9,7 @@ import SwiftUI
 
 /// A value that stores the fragments that make up a ``TextView``.
 ///
-/// ``TextContent`` is typically produced by the ``TextContentBuilder`` result
-/// builder. You can also construct an instance manually to compose fragments or
-/// concatenate multiple values.
+/// ``TextContent`` is typically produced by the ``TextContentBuilder`` result builder. You can also construct an instance manually to compose fragments or concatenate multiple values.
 public struct TextContent {
     /// An individual piece of content that can be stored inside ``TextContent``.
     public enum Fragment {
@@ -67,7 +65,7 @@ public struct TextContent {
     
     /// Returns an attributed string that contains all fragments.
     ///
-    /// `SwiftUI.Font` values are resolved as ``PlatformFont`` **on OS 26 and later**.
+    /// `SwiftUI.Font` values are resolved as `UIFont` / `NSFont`, depending on the target platform, **on OS 26 and later**.
     ///
     /// On earlier systems, use `PlatformFont` rather than `SwiftUI.Font` when creating `AttributedString`
     /// since the text view is backed by platform view, `SwiftUI.Font` is not respected.
